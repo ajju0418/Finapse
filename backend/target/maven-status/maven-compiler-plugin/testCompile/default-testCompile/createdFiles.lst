@@ -1,0 +1,8 @@
+com\finapse\service\MerchantServiceTest.class
+com\finapse\service\AccountServiceTest.class
+com\finapse\service\TransactionNormalizationServiceTest.class
+com\finapse\service\CsvImportServiceTest.class
+com\finapse\service\ReconciliationServiceTest.class
+com\finapse\service\CardServiceTest.class
+com\finapse\service\DuplicateDetectionServiceTest.class
+com\finapse\service\TransactionClassificationServiceTest.class
