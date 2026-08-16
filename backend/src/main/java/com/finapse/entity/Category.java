@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,6 +17,7 @@ public class Category {
 
     @Id
     @UuidGenerator
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID id;
 

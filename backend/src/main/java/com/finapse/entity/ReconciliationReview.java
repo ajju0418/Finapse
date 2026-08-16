@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,11 +19,13 @@ public class ReconciliationReview {
 
     @Id
     @UuidGenerator
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "transaction_link_id", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private TransactionLink transactionLink;
 
     @Enumerated(EnumType.STRING)

@@ -36,29 +36,68 @@ FINAPSE/
 
 ---
 
-## Getting Started
+## Getting Started (New Local Clone Setup)
 
-### 1. Database
+### Prerequisites
 
-```sql
-mysql -u root -p < database/schema.sql
+Ensure you have the following installed on your machine:
+- **Java 21 JDK**
+- **Node.js 18+** & `npm`
+- **Maven 3.8+**
+- **MySQL 8.0+** running locally on port `3306`
+
+---
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <repository-url>
+cd Finapse
+```
+
+---
+
+### Step 2: Configure MySQL Database
+
+Ensure your local MySQL service is running. 
+
+> 💡 **Automatic Setup**: The backend is configured to **automatically create** the `finapse` database on first run and auto-seed the default user & default categories! You do **not** need to manually run any SQL scripts unless you want to inspect or manual seed.
+
+> ⚠️ **Database Password Configuration**: Make sure to set your local MySQL server password in `backend/src/main/resources/application.properties` (under `spring.datasource.password=your_password`) or pass it as an environment variable before starting the backend!
+
+```bash
+# Set your local MySQL credentials via environment variables (or edit application.properties directly)
+export DB_USERNAME=root
+export DB_PASSWORD=your_local_mysql_password
+```
+
+*(Manual schema setup optional)*:
+```bash
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS finapse;"
+mysql -u root -p finapse < database/schema.sql
 mysql -u root -p finapse < database/seed.sql
 ```
 
-### 2. Backend
+---
+
+### Step 3: Start Backend (Spring Boot)
+
+Navigate to the `backend` directory and start the application:
 
 ```bash
 cd backend
-# Configure DB credentials (or set environment variables)
-# DB_URL, DB_USERNAME, DB_PASSWORD
+mvn clean compile
 mvn spring-boot:run
 ```
 
-Backend runs on: http://localhost:8080
+- **Backend API Server**: `http://localhost:8080`
+- **Health Check**: `http://localhost:8080/api/health`
 
-Health check: http://localhost:8080/api/health
+---
 
-### 3. Frontend
+### Step 4: Start Frontend (Next.js)
+
+Open a new terminal window, navigate to the `frontend` directory, install dependencies, and run the development server:
 
 ```bash
 cd frontend
@@ -66,7 +105,8 @@ npm install
 npm run dev
 ```
 
-Frontend runs on: http://localhost:3000
+- **Frontend Application**: `http://localhost:3000`
+- **Main App Dashboard**: `http://localhost:3000/app/money`
 
 ---
 
@@ -88,13 +128,3 @@ Frontend runs on: http://localhost:3000
 
 ---
 
-## Implementation Phases
-
-- [x] Phase 1 — Project Foundation
-- [x] Phase 2 — Database + JPA Entities
-- [x] Phase 3 — Account + Card Management
-- [x] Phase 4 — CSV Import Pipeline
-- [x] Phase 5 — Transaction Intelligence
-- [x] Phase 6 — Reconciliation Engine
-- [x] Phase 7 — Money Dashboard
-- [x] Phase 8 — Frontend Polish

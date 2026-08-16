@@ -1,18 +1,7 @@
--- =============================================================
--- FINAPSE — Seed Data
--- =============================================================
-
-USE finapse;
-
--- -------------------------------------------------------------
--- Default user (single-user MVP)
--- -------------------------------------------------------------
+-- Seed initial data for Finapse
 INSERT IGNORE INTO users (id, name, created_at, updated_at) VALUES
 ('00000000-0000-0000-0000-000000000001', 'Local User', NOW(), NOW());
 
--- -------------------------------------------------------------
--- Default categories
--- -------------------------------------------------------------
 INSERT IGNORE INTO categories (id, name, display_name, created_at, updated_at) VALUES
 ('00000000-0000-0000-0000-000000000011', 'FOOD_DINING',       'Food & Dining',      NOW(), NOW()),
 ('00000000-0000-0000-0000-000000000012', 'GROCERIES',         'Groceries',          NOW(), NOW()),

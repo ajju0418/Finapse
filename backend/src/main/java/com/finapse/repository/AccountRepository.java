@@ -10,5 +10,5 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     List<Account> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
-    List<Account> findByUserIdAndIsActiveTrue(UUID userId);
+    List<Account> findByUserIdAndActiveTrue(UUID userId);
 }

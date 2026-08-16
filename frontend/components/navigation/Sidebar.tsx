@@ -30,7 +30,9 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-border bg-background px-3 py-4">
       <div className="mb-8 px-2">
-        <span className="text-xl font-bold tracking-tight text-foreground">Finapse</span>
+        <Link href="/app/money" className="text-xl font-bold tracking-tight text-foreground hover:opacity-80 transition-opacity">
+          Finapse
+        </Link>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">

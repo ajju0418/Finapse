@@ -10,5 +10,5 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
 
     List<Card> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
-    List<Card> findByUserIdAndIsActiveTrue(UUID userId);
+    List<Card> findByUserIdAndActiveTrue(UUID userId);
 }

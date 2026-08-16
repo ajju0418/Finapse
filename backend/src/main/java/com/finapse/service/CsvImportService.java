@@ -29,83 +29,106 @@ import java.util.Map;
 @Service
 public class CsvImportService {
 
-    // Supported date formats across common Indian bank/card statements
-    private static final List<DateTimeFormatter> DATE_FORMATS = List.of(
-            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
-            DateTimeFormatter.ofPattern("MM/dd/yyyy"),
-            DateTimeFormatter.ofPattern("dd MMM yyyy"),
-            DateTimeFormatter.ofPattern("dd-MMM-yyyy"),
-            DateTimeFormatter.ofPattern("d MMM yyyy"),
-            DateTimeFormatter.ofPattern("dd MMM yy")
-    );
+
 
     // Canonical column name mappings — maps source header variants to internal names
     private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
             Map.entry("date",               "DATE"),
             Map.entry("transaction date",   "DATE"),
             Map.entry("txn date",           "DATE"),
+            Map.entry("trans date",         "DATE"),
+            Map.entry("txn_date",           "DATE"),
+            Map.entry("transaction_date",   "DATE"),
             Map.entry("value date",         "DATE"),
-            Map.entry("posting date",       "POSTED_DATE"),
+            Map.entry("tran date",          "DATE"),
             Map.entry("posted date",        "POSTED_DATE"),
+            Map.entry("posting date",       "POSTED_DATE"),
             Map.entry("description",        "DESCRIPTION"),
             Map.entry("narration",          "DESCRIPTION"),
             Map.entry("particulars",        "DESCRIPTION"),
             Map.entry("transaction details","DESCRIPTION"),
             Map.entry("remarks",            "DESCRIPTION"),
+            Map.entry("details",            "DESCRIPTION"),
+            Map.entry("summary",            "DESCRIPTION"),
             Map.entry("debit",              "DEBIT"),
             Map.entry("debit amount",       "DEBIT"),
             Map.entry("withdrawal",         "DEBIT"),
             Map.entry("withdrawal (dr)",    "DEBIT"),
             Map.entry("dr",                 "DEBIT"),
+            Map.entry("debit(dr)",          "DEBIT"),
             Map.entry("credit",             "CREDIT"),
             Map.entry("credit amount",      "CREDIT"),
             Map.entry("deposit",            "CREDIT"),
             Map.entry("deposit (cr)",       "CREDIT"),
             Map.entry("cr",                 "CREDIT"),
+            Map.entry("credit(cr)",         "CREDIT"),
             Map.entry("amount",             "AMOUNT"),
-            Map.entry("transaction amount", "AMOUNT")
+            Map.entry("transaction amount", "AMOUNT"),
+            Map.entry("amount (inr)",       "AMOUNT"),
+            Map.entry("amt",                "AMOUNT")
     );
 
     public CsvParseResult parse(InputStream inputStream, String fileName) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
-        try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT
-                     .builder()
-                     .setHeader()
-                     .setSkipHeaderRecord(true)
-                     .setIgnoreHeaderCase(true)
-                     .setTrim(true)
-                     .setIgnoreEmptyLines(true)
-                     .build()
-                     .parse(reader)) {
+        byte[] content;
+        try {
+            content = inputStream.readAllBytes();
+        } catch (IOException e) {
+            throw new InvalidCsvException("Failed to read CSV file: " + fileName);
+        }
+
+        String text = new String(content, StandardCharsets.UTF_8);
+
+        // Auto-detect custom delimiter (~|~, |, \t, ;, ,)
+        char delimiter = detectDelimiter(text);
+
+        // Find best header line by scanning lines
+        String[] lines = text.split("\r?\n");
+        int headerLineIndex = findHeaderLineIndex(lines, delimiter);
+        if (headerLineIndex == -1) {
+            throw new InvalidCsvException(
+                    "Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
+        }
+
+        // Re-construct CSV content starting from header line
+        StringBuilder sb = new StringBuilder();
+        for (int i = headerLineIndex; i < lines.length; i++) {
+            sb.append(lines[i]).append("\n");
+        }
+
+        CSVFormat csvFormat = CSVFormat.DEFAULT
+                .builder()
+                .setDelimiter(delimiter)
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setIgnoreHeaderCase(true)
+                .setTrim(true)
+                .setIgnoreEmptyLines(true)
+                .build();
+
+        try (InputStreamReader reader = new InputStreamReader(
+                new java.io.ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+             CSVParser parser = csvFormat.parse(reader)) {
 
             Map<String, Integer> headerMap = parser.getHeaderMap();
             if (headerMap == null || headerMap.isEmpty()) {
-                throw new InvalidCsvException(
-                        "The uploaded CSV does not contain a recognizable header row.");
+                throw new InvalidCsvException("The uploaded CSV does not contain a recognizable header row.");
             }
 
-            // Resolve canonical column names from the actual headers
             ColumnMapping mapping = resolveColumns(headerMap);
             if (mapping.dateCol == null) {
-                throw new InvalidCsvException(
-                        "Could not find a date column. Expected one of: Date, Transaction Date, Txn Date.");
+                throw new InvalidCsvException("Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
             }
             if (mapping.descriptionCol == null) {
-                throw new InvalidCsvException(
-                        "Could not find a description column. Expected one of: Description, Narration, Particulars.");
+                throw new InvalidCsvException("Could not find a description column. Please ensure your CSV has a column named 'Description', 'Narration', or 'Particulars'.");
             }
             if (!mapping.hasAmountColumns()) {
-                throw new InvalidCsvException(
-                        "Could not find amount columns. Expected Debit/Credit or Amount columns.");
+                throw new InvalidCsvException("Could not find amount columns. Please ensure your CSV has 'Debit' and 'Credit' columns, or a single 'Amount' column.");
             }
 
-            // Row number starts at 2 (1 = header)
-            int rowNumber = 2;
+            int rowNumber = headerLineIndex + 2;
             for (CSVRecord csvRecord : parser) {
                 String rawLine = csvRecord.toString();
                 try {
@@ -214,18 +237,69 @@ public class CsvImportService {
     private ColumnMapping resolveColumns(Map<String, Integer> headerMap) {
         ColumnMapping m = new ColumnMapping();
         for (String header : headerMap.keySet()) {
-            String canonical = HEADER_ALIASES.get(header.toLowerCase().trim());
-            if (canonical == null) continue;
-            switch (canonical) {
-                case "DATE"        -> m.dateCol        = header;
-                case "POSTED_DATE" -> m.postedDateCol  = header;
-                case "DESCRIPTION" -> m.descriptionCol = header;
-                case "DEBIT"       -> m.debitCol       = header;
-                case "CREDIT"      -> m.creditCol      = header;
-                case "AMOUNT"      -> { if (m.amountCol == null) m.amountCol = header; }
+            String lower = header.toLowerCase().trim();
+            String canonical = HEADER_ALIASES.get(lower);
+            if (canonical != null) {
+                assignCanonical(m, canonical, header);
             }
         }
+
+        // Fallback fuzzy matching if exact alias wasn't found
+        if (m.dateCol == null || m.descriptionCol == null || !m.hasAmountColumns()) {
+            for (String header : headerMap.keySet()) {
+                String lower = header.toLowerCase().trim();
+                if (m.dateCol == null && lower.contains("date")) {
+                    m.dateCol = header;
+                } else if (m.descriptionCol == null && (lower.contains("desc") || lower.contains("narration") || lower.contains("particular") || lower.contains("remark"))) {
+                    m.descriptionCol = header;
+                } else if (m.debitCol == null && (lower.contains("debit") || lower.contains("withdraw") || lower.startsWith("dr"))) {
+                    m.debitCol = header;
+                } else if (m.creditCol == null && (lower.contains("credit") || lower.contains("deposit") || lower.startsWith("cr"))) {
+                    m.creditCol = header;
+                } else if (m.amountCol == null && (lower.contains("amount") || lower.contains("amt"))) {
+                    m.amountCol = header;
+                }
+            }
+        }
+
         return m;
+    }
+
+    private void assignCanonical(ColumnMapping m, String canonical, String header) {
+        switch (canonical) {
+            case "DATE"        -> { if (m.dateCol == null) m.dateCol = header; }
+            case "POSTED_DATE" -> { if (m.postedDateCol == null) m.postedDateCol = header; }
+            case "DESCRIPTION" -> { if (m.descriptionCol == null) m.descriptionCol = header; }
+            case "DEBIT"       -> { if (m.debitCol == null) m.debitCol = header; }
+            case "CREDIT"      -> { if (m.creditCol == null) m.creditCol = header; }
+            case "AMOUNT"      -> { if (m.amountCol == null) m.amountCol = header; }
+        }
+    }
+
+    private char detectDelimiter(String content) {
+        if (content.contains("~|~")) return '|'; // apache csv splits ~|~ when delimiter is '|' or handle replacing
+        if (content.contains("\t")) return '\t';
+        if (content.contains(";")) return ';';
+        if (content.contains("|")) return '|';
+        return ',';
+    }
+
+    private int findHeaderLineIndex(String[] lines, char delimiter) {
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].toLowerCase();
+            if (line.contains("date") && (line.contains("desc") || line.contains("narration") || line.contains("particular") || line.contains("summary")) &&
+                    (line.contains("amount") || line.contains("amt") || line.contains("debit") || line.contains("credit") || line.contains("dr") || line.contains("cr"))) {
+                return i;
+            }
+        }
+        // Secondary attempt: any line with date and (amount or debit or credit)
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].toLowerCase();
+            if (line.contains("date") && (line.contains("amount") || line.contains("amt") || line.contains("debit") || line.contains("credit"))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static class ColumnMapping {
@@ -245,15 +319,38 @@ public class CsvImportService {
     // Parsing helpers
     // -------------------------------------------------------------------------
 
+    private static final List<DateTimeFormatter> DATE_FORMATS = List.of(
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+            DateTimeFormatter.ofPattern("dd MMM yyyy"),
+            DateTimeFormatter.ofPattern("dd-MMM-yyyy"),
+            DateTimeFormatter.ofPattern("d MMM yyyy"),
+            DateTimeFormatter.ofPattern("dd MMM yy")
+    );
+
     private LocalDate parseDate(String raw, int rowNumber) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("Row " + rowNumber + ": date is missing.");
         }
-        String cleaned = raw.trim();
+        String cleaned = raw.replaceAll("~", "").trim();
         for (DateTimeFormatter fmt : DATE_FORMATS) {
             try {
                 return LocalDate.parse(cleaned, fmt);
             } catch (DateTimeParseException ignored) {}
+        }
+        // Try parsing first token if timestamp space separated
+        if (cleaned.contains(" ")) {
+            String datePart = cleaned.split("\\s+")[0];
+            for (DateTimeFormatter fmt : DATE_FORMATS) {
+                try {
+                    return LocalDate.parse(datePart, fmt);
+                } catch (DateTimeParseException ignored) {}
+            }
         }
         throw new IllegalArgumentException(
                 "Row " + rowNumber + ": unrecognised date format '" + cleaned + "'.");
@@ -261,8 +358,8 @@ public class CsvImportService {
 
     private BigDecimal parseAmount(String raw) {
         if (raw == null || raw.isBlank()) return null;
-        // Remove currency symbols, commas, spaces
-        String cleaned = raw.trim()
+        // Remove currency symbols, commas, spaces, tildes
+        String cleaned = raw.replaceAll("~", "").trim()
                 .replaceAll("[₹$€£,\\s]", "")
                 .replaceAll("\\((.+)\\)", "-$1"); // (1000) → -1000
         if (cleaned.isEmpty()) return null;
@@ -276,7 +373,9 @@ public class CsvImportService {
     private String safeGet(CSVRecord record, String column) {
         try {
             String val = record.get(column);
-            return val != null ? val.trim() : null;
+            if (val == null) return null;
+            val = val.replaceAll("~", "").trim();
+            return val;
         } catch (IllegalArgumentException e) {
             return null;
         }

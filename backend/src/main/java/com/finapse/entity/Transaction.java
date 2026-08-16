@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,28 +22,34 @@ public class Transaction {
 
     @Id
     @UuidGenerator
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "statement_id", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Statement statement;
 
     // Exactly one of account or card must be set — enforced by DB CHECK constraint
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Account account;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "card_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Card card;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "merchant_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Merchant merchant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Category category;
 
     @Column(name = "transaction_date", nullable = false)

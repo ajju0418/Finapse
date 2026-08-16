@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,16 +20,19 @@ public class TransactionLink {
 
     @Id
     @UuidGenerator
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID id;
 
     // source and target must differ — enforced by DB CHECK constraint
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "source_transaction_id", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Transaction sourceTransaction;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "target_transaction_id", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private Transaction targetTransaction;
 
     @Enumerated(EnumType.STRING)

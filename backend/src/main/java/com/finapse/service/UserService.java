@@ -20,7 +20,11 @@ public class UserService {
 
     public User getDefaultUser() {
         return userRepository.findById(DEFAULT_USER_ID)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Default user not found. Please run database/seed.sql."));
+                .orElseGet(() -> {
+                    User u = new User();
+                    u.setId(DEFAULT_USER_ID);
+                    u.setName("Local User");
+                    return userRepository.save(u);
+                });
     }
 }
