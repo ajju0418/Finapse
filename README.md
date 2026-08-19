@@ -118,7 +118,7 @@ npm run dev
 |---------------|----------------------------------------------|
 | `DB_URL`      | `jdbc:mysql://localhost:3306/finapse?...`    |
 | `DB_USERNAME` | `root`                                       |
-| `DB_PASSWORD` | *(empty)*                                    |
+| `DB_PASSWORD` | *your_password*                              |
 
 ### Frontend
 
