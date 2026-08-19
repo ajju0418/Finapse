@@ -26,12 +26,20 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [loadingSource, setLoadingSource] = useState(true)
+  const [sourceError, setSourceError] = useState<string | null>(null)
   const [result, setResult] = useState<Statement | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    accountsApi.getAll().then(setAccounts).catch(() => {})
-    cardsApi.getAll().then(setCards).catch(() => {})
+    setLoadingSource(true)
+    setSourceError(null)
+    Promise.all([
+      accountsApi.getAll().then(setAccounts),
+      cardsApi.getAll().then(setCards),
+    ])
+      .catch(() => setSourceError('Could not load accounts/cards. Make sure the backend is running.'))
+      .finally(() => setLoadingSource(false))
   }, [])
 
   function selectType(type: StatementType) {
@@ -112,9 +120,20 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
             Select {statementType === 'BANK' ? 'bank account' : 'credit card'}
           </p>
 
-          {statementType === 'BANK' && (
+          {loadingSource && (
+            <p className="text-sm text-muted-foreground animate-pulse">Loading…</p>
+          )}
+
+          {!loadingSource && sourceError && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>{sourceError}</p>
+            </div>
+          )}
+
+          {!loadingSource && !sourceError && statementType === 'BANK' && (
             accounts.length === 0
-              ? <p className="text-sm text-muted-foreground">No bank accounts found. Add one first.</p>
+              ? <p className="text-sm text-muted-foreground">No bank accounts found. Add one first from the Accounts page.</p>
               : <div className="space-y-2">
                   {accounts.map(a => (
                     <button
@@ -134,9 +153,9 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
                 </div>
           )}
 
-          {statementType === 'CREDIT_CARD' && (
+          {!loadingSource && !sourceError && statementType === 'CREDIT_CARD' && (
             cards.length === 0
-              ? <p className="text-sm text-muted-foreground">No credit cards found. Add one first.</p>
+              ? <p className="text-sm text-muted-foreground">No credit cards found. Add one first from the Cards page.</p>
               : <div className="space-y-2">
                   {cards.map(c => (
                     <button
@@ -165,7 +184,7 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
             </button>
             <button
               onClick={goToUpload}
-              disabled={(statementType === 'BANK' && !selectedAccountId) || (statementType === 'CREDIT_CARD' && !selectedCardId)}
+              disabled={loadingSource || !!sourceError || (statementType === 'BANK' && !selectedAccountId) || (statementType === 'CREDIT_CARD' && !selectedCardId)}
               className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               Continue

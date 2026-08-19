@@ -14,12 +14,16 @@ import java.util.List;
 @Service
 public class TransactionClassificationService {
 
-    // Credit-card payment keywords (bank debit → paying a card bill)
+    // Credit-card payment keywords — applies on BOTH bank debits AND card credits
+    // (card statements show bill payments as a CREDIT line)
     private static final List<String> CARD_PAYMENT_KEYWORDS = List.of(
             "CREDIT CARD", "CREDITCARD", "CARD PAYMENT", "CARD BILL",
             "CC PAYMENT", "CC BILL", "AMEX", "VISA PAYMENT", "MASTERCARD PAYMENT",
             "HDFC CARD", "ICICI CARD", "SBI CARD", "AXIS CARD", "KOTAK CARD",
-            "CITI CARD", "INDUSIND CARD", "YES CARD", "RBL CARD"
+            "CITI CARD", "INDUSIND CARD", "YES CARD", "RBL CARD",
+            // Bill-payment aggregators that appear on card statements
+            "BPPY", "BBPS", "BILLDESK", "BILL PAYMENT", "AUTOPAY",
+            "STANDING INSTRUCTION", "SI PAYMENT", "AUTO DEBIT"
     );
 
     private static final List<String> CASHBACK_KEYWORDS = List.of(
@@ -59,12 +63,19 @@ public class TransactionClassificationService {
 
         // Credits first — more deterministic
         if (dir == TransactionDirection.CREDIT) {
+            // Cashback reversal must be checked before CASHBACK — it contains "CASHBACK" but is a deduction
+            if (desc.contains("REVERSAL") && containsAny(desc, CASHBACK_KEYWORDS)) return TransactionType.REFUND;
             if (containsAny(desc, CASHBACK_KEYWORDS)) return TransactionType.CASHBACK;
             if (containsAny(desc, REFUND_KEYWORDS))   return TransactionType.REFUND;
+            // Bill payments appearing as credits on a card statement
+            if (tx.getCard() != null && containsAny(desc, CARD_PAYMENT_KEYWORDS)) return TransactionType.CREDIT_CARD_PAYMENT;
             if (containsAny(desc, INCOME_KEYWORDS))   return TransactionType.INCOME;
             if (containsAny(desc, INTEREST_KEYWORDS)) return TransactionType.INTEREST;
             if (containsAny(desc, TRANSFER_KEYWORDS)) return TransactionType.TRANSFER;
-            // Generic credit from a bank account = likely income; from card = likely refund/cashback
+            // Credit-card statements export purchases as positive/CREDIT amounts.
+            // If no special keyword matched and this is a card transaction, it is a purchase (EXPENSE).
+            if (tx.getCard() != null) return TransactionType.EXPENSE;
+            // Generic credit on a bank account = income
             if (tx.getAccount() != null) return TransactionType.INCOME;
             return TransactionType.UNKNOWN;
         }

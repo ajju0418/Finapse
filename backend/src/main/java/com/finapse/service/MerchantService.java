@@ -46,7 +46,11 @@ public class MerchantService {
         // Strip UPI prefix: "UPI-MERCHANT-REF" → "MERCHANT-REF"
         name = name.replaceAll("^UPI[-/]", "");
 
-        // Split on delimiters first — preserves "AMAZON PAY" from "AMAZON PAY*ORDER 123"
+        // Strip payment gateway prefixes before splitting on "*":
+        // "RAZ*SWIGGY" → "SWIGGY", "CASHFREE*FLIPKART" → "FLIPKART", "PAY*VODAFONEIDEA" → "VODAFONEIDEA"
+        name = name.replaceAll("^(RAZ|CASHFREE|PAYU|PHONEPE|GPAY|PAY)\\*", "");
+
+        // Split on remaining delimiters — preserves "AMAZON PAY" from "AMAZON PAY*ORDER 123"
         name = name.split("[*|@#/]")[0].trim();
 
         // Remove legal suffixes (PAY intentionally excluded)

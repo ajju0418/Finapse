@@ -66,20 +66,32 @@ export function CardTile({ card }: Props) {
           </div>
         )}
 
-        {/* Analytics grid */}
+        {/* Spending — always visible, prominent */}
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">Total Spending</p>
+            <p className="text-2xl font-bold text-red-500">
+              {analytics ? formatCurrency(analytics.totalSpending) : '—'}
+            </p>
+          </div>
+          {analytics && analytics.totalCashback > 0 && (
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground mb-0.5">Cashback earned</p>
+              <p className="text-sm font-semibold text-emerald-500">+{formatCurrency(analytics.totalCashback)}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Secondary stats — payments + transaction count */}
         {analytics && (
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-xs text-muted-foreground mb-1">Spending</p>
-              <p className="font-semibold text-red-600">{formatCurrency(analytics.totalSpending)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Payments Made</p>
+              <p className="font-semibold text-purple-500">{formatCurrency(analytics.totalPayments)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-xs text-muted-foreground mb-1">Cashback</p>
-              <p className="font-semibold text-emerald-600">{formatCurrency(analytics.totalCashback)}</p>
-            </div>
-            <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-xs text-muted-foreground mb-1">Payments</p>
-              <p className="font-semibold text-purple-600">{formatCurrency(analytics.totalPayments)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Transactions</p>
+              <p className="font-semibold">{analytics.transactionCount}</p>
             </div>
           </div>
         )}
