@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, CreditCard, FileText, Settings } from 'lucide-react'
+import { BarChart3, CreditCard, FileText, Building2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { reconciliationApi } from '@/lib/api/reconciliation'
 
@@ -19,6 +19,7 @@ export function Sidebar() {
 
   const navItems = [
     { href: '/app/money',      label: 'Money',      icon: BarChart3,  badge: pendingCount > 0 ? pendingCount : null },
+    { href: '/app/banks',      label: 'Banks',      icon: Building2,   badge: null },
     { href: '/app/cards',      label: 'Cards',      icon: CreditCard, badge: null },
     { href: '/app/statements', label: 'Statements', icon: FileText,   badge: null },
   ]

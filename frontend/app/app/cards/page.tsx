@@ -3,22 +3,40 @@
 import { useEffect, useState } from 'react'
 import { cardsApi } from '@/lib/api/cards'
 import type { Card } from '@/types/card'
-import { CardTile } from '@/components/cards/CardTile'
+import { FinancialSourceCard } from '@/components/financial/FinancialSourceCard'
 import { AddCardForm } from '@/components/cards/AddCardForm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { X } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils/format'
 
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([])
+  const [analytics, setAnalytics] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
-    cardsApi.getAll()
-      .then(setCards)
-      .catch(() => setError('Could not load cards. Make sure the backend is running.'))
-      .finally(() => setLoading(false))
+    async function loadData() {
+      try {
+        const data = await cardsApi.getAll()
+        setCards(data)
+
+        const analyticsData: Record<string, any> = {}
+        await Promise.all(
+          data.map(async (card) => {
+            const res = await cardsApi.getAnalytics(card.id)
+            analyticsData[card.id] = res
+          })
+        )
+        setAnalytics(analyticsData)
+      } catch (err) {
+        setError('Could not load cards. Make sure the backend is running.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
   }, [])
 
   function handleCardCreated(card: Card) {
@@ -95,9 +113,21 @@ export default function CardsPage() {
         {/* Card grid */}
         {!loading && !error && cards.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cards.map(card => (
-              <CardTile key={card.id} card={card} />
-            ))}
+            {cards.map(card => {
+              const analytic = analytics[card.id]
+              return (
+                <FinancialSourceCard
+                  key={card.id}
+                  source={{
+                    name: card.name,
+                    institution: card.issuer || 'Unknown Issuer',
+                    currentBalance: analytic ? formatCurrency(analytic.outstanding) : '---',
+                    totalSpending: analytic ? formatCurrency(analytic.totalSpending) : '---',
+                    isCard: true
+                  }}
+                />
+              )
+            })}
           </div>
         )}
       </div>

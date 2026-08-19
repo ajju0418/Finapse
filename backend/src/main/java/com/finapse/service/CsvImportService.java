@@ -1,10 +1,10 @@
 package com.finapse.service;
 
-import com.finapse.dto.CsvParseResult;
-import com.finapse.dto.CsvParseResult.InvalidRowReport;
+import com.finapse.dto.StatementParseResult;
+import com.finapse.dto.StatementParseResult.InvalidRowReport;
 import com.finapse.dto.RawTransactionRecord;
 import com.finapse.enums.TransactionDirection;
-import com.finapse.exception.InvalidCsvException;
+import com.finapse.exception.InvalidStatementFileException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -27,9 +27,12 @@ import java.util.Map;
  * Does NOT classify transactions or make any financial decisions.
  */
 @Service
-public class CsvImportService {
+public class CsvImportService implements StatementFileParser {
 
-
+    @Override
+    public boolean supports(String fileName) {
+        return fileName != null && fileName.toLowerCase().endsWith(".csv");
+    }
 
     // Canonical column name mappings — maps source header variants to internal names
     private static final Map<String, String> HEADER_ALIASES = Map.ofEntries(
@@ -68,7 +71,8 @@ public class CsvImportService {
             Map.entry("amt",                "AMOUNT")
     );
 
-    public CsvParseResult parse(InputStream inputStream, String fileName) {
+    @Override
+    public StatementParseResult parse(InputStream inputStream, String fileName) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
@@ -76,7 +80,7 @@ public class CsvImportService {
         try {
             content = inputStream.readAllBytes();
         } catch (IOException e) {
-            throw new InvalidCsvException("Failed to read CSV file: " + fileName);
+            throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
         }
 
         String text = new String(content, StandardCharsets.UTF_8);
@@ -88,7 +92,7 @@ public class CsvImportService {
         String[] lines = text.split("\r?\n");
         int headerLineIndex = findHeaderLineIndex(lines, delimiter);
         if (headerLineIndex == -1) {
-            throw new InvalidCsvException(
+            throw new InvalidStatementFileException(
                     "Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
         }
 
@@ -114,18 +118,18 @@ public class CsvImportService {
 
             Map<String, Integer> headerMap = parser.getHeaderMap();
             if (headerMap == null || headerMap.isEmpty()) {
-                throw new InvalidCsvException("The uploaded CSV does not contain a recognizable header row.");
+                throw new InvalidStatementFileException("The uploaded CSV does not contain a recognizable header row.");
             }
 
             ColumnMapping mapping = resolveColumns(headerMap);
             if (mapping.dateCol == null) {
-                throw new InvalidCsvException("Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
+                throw new InvalidStatementFileException("Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
             }
             if (mapping.descriptionCol == null) {
-                throw new InvalidCsvException("Could not find a description column. Please ensure your CSV has a column named 'Description', 'Narration', or 'Particulars'.");
+                throw new InvalidStatementFileException("Could not find a description column. Please ensure your CSV has a column named 'Description', 'Narration', or 'Particulars'.");
             }
             if (!mapping.hasAmountColumns()) {
-                throw new InvalidCsvException("Could not find amount columns. Please ensure your CSV has 'Debit' and 'Credit' columns, or a single 'Amount' column.");
+                throw new InvalidStatementFileException("Could not find amount columns. Please ensure your CSV has 'Debit' and 'Credit' columns, or a single 'Amount' column.");
             }
 
             int rowNumber = headerLineIndex + 2;
@@ -142,17 +146,17 @@ public class CsvImportService {
                 rowNumber++;
             }
 
-        } catch (InvalidCsvException e) {
+        } catch (InvalidStatementFileException e) {
             throw e;
         } catch (IOException e) {
-            throw new InvalidCsvException("Failed to read CSV file: " + fileName);
+            throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
         }
 
         if (records.isEmpty() && invalidRows.isEmpty()) {
-            throw new InvalidCsvException("The CSV file contains no transaction rows.");
+            throw new InvalidStatementFileException("The CSV file contains no transaction rows.");
         }
 
-        return new CsvParseResult(records, invalidRows);
+        return new StatementParseResult(records, invalidRows);
     }
 
     private RawTransactionRecord parseRow(CSVRecord csv, ColumnMapping mapping,
@@ -330,7 +334,10 @@ public class CsvImportService {
             DateTimeFormatter.ofPattern("dd MMM yyyy"),
             DateTimeFormatter.ofPattern("dd-MMM-yyyy"),
             DateTimeFormatter.ofPattern("d MMM yyyy"),
-            DateTimeFormatter.ofPattern("dd MMM yy")
+            DateTimeFormatter.ofPattern("dd MMM yy"),
+            DateTimeFormatter.ofPattern("dd/MM/yy"),
+            DateTimeFormatter.ofPattern("dd-MM-yy"),
+            DateTimeFormatter.ofPattern("MM/dd/yy")
     );
 
     private LocalDate parseDate(String raw, int rowNumber) {

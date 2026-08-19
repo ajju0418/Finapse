@@ -7,7 +7,7 @@ import { statementsApi } from '@/lib/api/statements'
 import type { Account } from '@/types/account'
 import type { Card } from '@/types/card'
 import type { Statement, StatementType } from '@/types/statement'
-import { CsvDropzone } from './CsvDropzone'
+import { FileDropzone } from './FileDropzone'
 import { X, CheckCircle2, AlertTriangle } from 'lucide-react'
 
 interface Props {
@@ -196,7 +196,7 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
       {/* Step 3 — Upload CSV */}
       {step === 'upload' && (
         <div className="space-y-4">
-          <CsvDropzone onFileSelected={setFile} disabled={uploading} />
+          <FileDropzone onFileSelected={setFile} disabled={uploading} />
 
           {error && (
             <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">

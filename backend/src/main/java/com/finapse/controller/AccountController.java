@@ -2,6 +2,7 @@ package com.finapse.controller;
 
 import com.finapse.dto.AccountCreateRequest;
 import com.finapse.dto.AccountResponse;
+import com.finapse.dto.AccountAnalyticsResponse;
 import com.finapse.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,11 @@ public class AccountController {
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(accountService.getById(id));
+    }
+
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<AccountAnalyticsResponse> getAnalytics(@PathVariable UUID id) {
+        return ResponseEntity.ok(accountService.getAnalytics(id));
     }
 
     @PostMapping

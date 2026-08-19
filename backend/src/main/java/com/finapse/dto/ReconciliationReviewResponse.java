@@ -18,8 +18,8 @@ public record ReconciliationReviewResponse(
         ReviewStatus status,
         String systemReason,
         String userDecision,
-        UUID sourceTransactionId,
-        UUID targetTransactionId,
+        TransactionResponse sourceTransaction,
+        TransactionResponse targetTransaction,
         LocalDateTime createdAt,
         LocalDateTime reviewedAt
 ) {
@@ -34,8 +34,8 @@ public record ReconciliationReviewResponse(
                 review.getStatus(),
                 review.getSystemReason(),
                 review.getUserDecision(),
-                link.getSourceTransaction().getId(),
-                link.getTargetTransaction().getId(),
+                TransactionResponse.from(link.getSourceTransaction()),
+                TransactionResponse.from(link.getTargetTransaction()),
                 review.getCreatedAt(),
                 review.getReviewedAt()
         );

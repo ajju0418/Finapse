@@ -1,8 +1,8 @@
 package com.finapse.service;
 
-import com.finapse.dto.CsvParseResult;
+import com.finapse.dto.StatementParseResult;
 import com.finapse.enums.TransactionDirection;
-import com.finapse.exception.InvalidCsvException;
+import com.finapse.exception.InvalidStatementFileException;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -27,7 +27,7 @@ class CsvImportServiceTest {
                 15/08/2024,SWIGGY ORDER,500.00,
                 01/08/2024,SALARY CREDIT,,26399.00
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
 
         assertThat(result.records()).hasSize(2);
         assertThat(result.invalidRows()).isEmpty();
@@ -51,7 +51,7 @@ class CsvImportServiceTest {
                 10/08/2024,AMAZON PURCHASE,-1500.00
                 01/08/2024,CASHBACK,75.00
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
 
         assertThat(result.records()).hasSize(2);
         assertThat(result.records().get(0).direction()).isEqualTo(TransactionDirection.DEBIT);
@@ -67,7 +67,7 @@ class CsvImportServiceTest {
                 2024-08-16,NEFT CREDIT,,5000.00
                 15 Aug 2024,ATM WITHDRAWAL,1000.00,
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
         assertThat(result.records()).hasSize(3);
         assertThat(result.invalidRows()).isEmpty();
     }
@@ -79,7 +79,7 @@ class CsvImportServiceTest {
                 15/08/2024,VALID ROW,500.00,
                 BADDATE,INVALID DATE ROW,100.00,
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
 
         assertThat(result.records()).hasSize(1);
         assertThat(result.invalidRows()).hasSize(1);
@@ -93,26 +93,26 @@ class CsvImportServiceTest {
                 Date,Description,Debit,Credit
                 01/08/2024,SBI CARD PAYMENT,"₹1,00,000.00",
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
         assertThat(result.records()).hasSize(1);
         assertThat(result.records().get(0).amount()).isEqualByComparingTo("100000.00");
     }
 
     @Test
-    void parse_missingDateColumn_throwsInvalidCsvException() {
+    void parse_missingDateColumn_throwsInvalidStatementFileException() {
         String content = """
                 Description,Debit,Credit
                 SWIGGY,500.00,
                 """;
         assertThatThrownBy(() -> service.parse(csv(content), "test.csv"))
-                .isInstanceOf(InvalidCsvException.class)
+                .isInstanceOf(InvalidStatementFileException.class)
                 .hasMessageContaining("date column");
     }
 
     @Test
-    void parse_emptyFile_throwsInvalidCsvException() {
+    void parse_emptyFile_throwsInvalidStatementFileException() {
         assertThatThrownBy(() -> service.parse(csv(""), "test.csv"))
-                .isInstanceOf(InvalidCsvException.class);
+                .isInstanceOf(InvalidStatementFileException.class);
     }
 
     @Test
@@ -121,7 +121,7 @@ class CsvImportServiceTest {
                 Date,Narration,Withdrawal,Deposit
                 10/08/2024,SWIGGY FOOD,350.00,
                 """;
-        CsvParseResult result = service.parse(csv(content), "test.csv");
+        StatementParseResult result = service.parse(csv(content), "test.csv");
         assertThat(result.records()).hasSize(1);
         assertThat(result.records().get(0).description()).isEqualTo("SWIGGY FOOD");
         assertThat(result.records().get(0).direction()).isEqualTo(TransactionDirection.DEBIT);

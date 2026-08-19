@@ -72,7 +72,26 @@ export function ReconciliationReviewPanel() {
                   {Math.round(review.confidenceScore * 100)}% confidence
                 </span>
               </div>
-              <p className="text-xs text-gray-600 leading-relaxed">{review.systemReason}</p>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3">{review.systemReason}</p>
+              
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="rounded border bg-white p-2">
+                  <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Source Transaction</div>
+                  <div className="text-sm font-medium">{review.sourceTransaction.merchantName || review.sourceTransaction.description}</div>
+                  <div className="text-xs text-gray-500">{new Date(review.sourceTransaction.transactionDate).toLocaleDateString()}</div>
+                  <div className={`text-sm font-bold ${review.sourceTransaction.direction === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                    {review.sourceTransaction.direction === 'CREDIT' ? '+' : '-'}{formatCurrency(review.sourceTransaction.amount)}
+                  </div>
+                </div>
+                <div className="rounded border bg-white p-2">
+                  <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Target Transaction</div>
+                  <div className="text-sm font-medium">{review.targetTransaction.merchantName || review.targetTransaction.description}</div>
+                  <div className="text-xs text-gray-500">{new Date(review.targetTransaction.transactionDate).toLocaleDateString()}</div>
+                  <div className={`text-sm font-bold ${review.targetTransaction.direction === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                    {review.targetTransaction.direction === 'CREDIT' ? '+' : '-'}{formatCurrency(review.targetTransaction.amount)}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 shrink-0">
               <button

@@ -33,4 +33,12 @@ export interface DashboardData {
   topMerchants: MerchantSpending[]
   recentTransactions: Transaction[]
   pendingReviewCount: number
+  sourceSummaries: {
+    id: string
+    name: string
+    institution: string
+    currentBalance: number
+    totalSpending: number
+    isCard: boolean
+  }[]
 }

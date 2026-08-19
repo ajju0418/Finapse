@@ -1,6 +1,7 @@
 package com.finapse.service;
 
-import com.finapse.dto.CsvParseResult;
+import com.finapse.classification.orchestrator.ClassificationOrchestrator;
+import com.finapse.dto.StatementParseResult;
 import com.finapse.dto.StatementResponse;
 import com.finapse.entity.Account;
 import com.finapse.entity.Card;
@@ -9,7 +10,7 @@ import com.finapse.entity.Transaction;
 import com.finapse.enums.ImportStatus;
 import com.finapse.enums.StatementType;
 import com.finapse.exception.DuplicateStatementException;
-import com.finapse.exception.InvalidCsvException;
+import com.finapse.exception.InvalidStatementFileException;
 import com.finapse.exception.StatementProcessingException;
 import com.finapse.repository.StatementRepository;
 import com.finapse.repository.TransactionRepository;
@@ -37,11 +38,8 @@ public class StatementService {
     private final UserService userService;
     private final AccountService accountService;
     private final CardService cardService;
-    private final CsvImportService csvImportService;
-    private final TransactionNormalizationService normalizationService;
-    private final TransactionClassificationService classificationService;
-    private final MerchantService merchantService;
-    private final CategoryInferenceService categoryInferenceService;
+    private final StatementParserFactory parserFactory;
+    private final ClassificationOrchestrator classificationOrchestrator;
     private final DuplicateDetectionService duplicateDetectionService;
     private final ReconciliationService reconciliationService;
 
@@ -107,13 +105,14 @@ public class StatementService {
         statement.setCard(card);
         statement = statementRepository.save(statement);
 
-        // Parse CSV
-        CsvParseResult parseResult;
+        // Parse File
+        StatementParseResult parseResult;
         try {
-            parseResult = csvImportService.parse(
+            StatementFileParser parser = parserFactory.getParser(file.getOriginalFilename());
+            parseResult = parser.parse(
                     new java.io.ByteArrayInputStream(fileBytes),
                     file.getOriginalFilename());
-        } catch (InvalidCsvException e) {
+        } catch (InvalidStatementFileException e) {
             statement.setImportStatus(ImportStatus.FAILED);
             statementRepository.save(statement);
             throw e;
@@ -122,17 +121,14 @@ public class StatementService {
         if (parseResult.records().isEmpty()) {
             statement.setImportStatus(ImportStatus.FAILED);
             statementRepository.save(statement);
-            throw new InvalidCsvException(
+            throw new InvalidStatementFileException(
                     "No valid transactions could be extracted from the uploaded file.");
         }
 
         // Normalise, classify, resolve merchant, persist
         List<Transaction> transactions = new ArrayList<>();
         for (var raw : parseResult.records()) {
-            Transaction tx = normalizationService.normalize(raw, statement, account, card);
-            tx.setTransactionType(classificationService.classify(tx));
-            tx.setMerchant(merchantService.resolveForTransaction(tx));
-            tx.setCategory(categoryInferenceService.infer(tx.getDescription()));
+            Transaction tx = classificationOrchestrator.orchestrate(raw, statement, account, card);
             transactions.add(tx);
         }
         transactionRepository.saveAll(transactions);
@@ -171,24 +167,24 @@ public class StatementService {
     private void validateSource(StatementType type, UUID accountId, UUID cardId) {
         if (type == StatementType.BANK) {
             if (accountId == null)
-                throw new InvalidCsvException("A bank account must be selected for a BANK statement.");
+                throw new InvalidStatementFileException("A bank account must be selected for a BANK statement.");
             if (cardId != null)
-                throw new InvalidCsvException("A BANK statement cannot be associated with a card.");
+                throw new InvalidStatementFileException("A BANK statement cannot be associated with a card.");
         } else {
             if (cardId == null)
-                throw new InvalidCsvException("A credit card must be selected for a CREDIT_CARD statement.");
+                throw new InvalidStatementFileException("A credit card must be selected for a CREDIT_CARD statement.");
             if (accountId != null)
-                throw new InvalidCsvException("A CREDIT_CARD statement cannot be associated with a bank account.");
+                throw new InvalidStatementFileException("A CREDIT_CARD statement cannot be associated with a bank account.");
         }
     }
 
     private void validateFileType(MultipartFile file) {
         String name = file.getOriginalFilename();
-        if (name == null || !name.toLowerCase().endsWith(".csv")) {
-            throw new InvalidCsvException("Only CSV files are accepted. Please upload a .csv file.");
+        if (name == null || (!name.toLowerCase().endsWith(".csv") && !name.toLowerCase().endsWith(".xls") && !name.toLowerCase().endsWith(".xlsx"))) {
+            throw new InvalidStatementFileException("Only CSV and Excel files are accepted. Please upload a .csv, .xls, or .xlsx file.");
         }
         if (file.isEmpty()) {
-            throw new InvalidCsvException("The uploaded file is empty.");
+            throw new InvalidStatementFileException("The uploaded file is empty.");
         }
     }
 
@@ -202,8 +198,7 @@ public class StatementService {
         List<Transaction> transactions = transactionRepository.findByStatementIdOrderByTransactionDateDesc(statementId);
 
         for (Transaction tx : transactions) {
-            tx.setTransactionType(classificationService.classify(tx));
-            tx.setCategory(categoryInferenceService.infer(tx.getDescription()));
+            classificationOrchestrator.reclassify(tx);
         }
         transactionRepository.saveAll(transactions);
 

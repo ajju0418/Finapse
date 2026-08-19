@@ -15,5 +15,6 @@ public record DashboardResponse(
         List<CategorySpendingDto> categoryBreakdown,
         List<MerchantSpendingDto> topMerchants,
         List<TransactionResponse> recentTransactions,
-        long pendingReviewCount
+        long pendingReviewCount,
+        List<FinancialSourceSummary> sourceSummaries
 ) {}

@@ -1,3 +1,5 @@
+import type { Transaction } from './transaction'
+
 export type LinkType = 'CREDIT_CARD_PAYMENT' | 'TRANSFER' | 'REFUND' | 'DUPLICATE' | 'CASHBACK'
 export type LinkStatus = 'SUGGESTED' | 'REVIEW_REQUIRED' | 'CONFIRMED' | 'REJECTED'
 export type ReviewType =
@@ -17,8 +19,8 @@ export interface ReconciliationReview {
   status: ReviewStatus
   systemReason: string
   userDecision: string | null
-  sourceTransactionId: string
-  targetTransactionId: string
+  sourceTransaction: Transaction
+  targetTransaction: Transaction
   createdAt: string
   reviewedAt: string | null
 }

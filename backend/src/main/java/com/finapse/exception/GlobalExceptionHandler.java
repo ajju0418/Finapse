@@ -23,8 +23,8 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(409, "DUPLICATE_STATEMENT", ex.getMessage()));
     }
 
-    @ExceptionHandler(InvalidCsvException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCsv(InvalidCsvException ex) {
+    @ExceptionHandler(InvalidStatementFileException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCsv(InvalidStatementFileException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(400, "INVALID_CSV", ex.getMessage()));
     }

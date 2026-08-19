@@ -4,6 +4,7 @@ import com.finapse.dto.*;
 import com.finapse.entity.Transaction;
 import com.finapse.enums.TransactionType;
 import com.finapse.repository.TransactionRepository;
+import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +14,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +22,8 @@ public class DashboardService {
     private final TransactionRepository transactionRepository;
     private final ReconciliationReviewService reconciliationReviewService;
     private final UserService userService;
+    private final AccountService accountService;
+    private final CardService cardService;
 
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard(String period) {
@@ -46,10 +48,30 @@ public class DashboardService {
 
         long pendingReviews = reconciliationReviewService.countPending();
 
+        // Source Summaries
+        List<FinancialSourceSummary> sourceSummaries = new ArrayList<>();
+
+        accountService.getAll().forEach(acc -> {
+            var analytics = accountService.getAnalytics(acc.id());
+            sourceSummaries.add(new FinancialSourceSummary(
+                    acc.id(), acc.name(), acc.institutionName(),
+                    analytics.netChange(), analytics.totalOutflow(), false
+            ));
+        });
+
+        cardService.getAll().forEach(card -> {
+            var analytics = cardService.getAnalytics(card.id());
+            sourceSummaries.add(new FinancialSourceSummary(
+                    card.id(), card.name(), card.issuer(),
+                    analytics.outstanding(), analytics.totalSpending(), true
+            ));
+        });
+
         return new DashboardResponse(
                 income, grossExpenses, refunds, actualSpending, cashback, netCashFlow,
                 from.toString(), to.toString(),
-                categoryBreakdown, topMerchants, recent, pendingReviews
+                categoryBreakdown, topMerchants, recent, pendingReviews,
+                sourceSummaries
         );
     }
 

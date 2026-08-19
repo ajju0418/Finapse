@@ -9,3 +9,12 @@ export interface Account {
   isActive: boolean
   createdAt: string
 }
+
+export interface AccountAnalyticsResponse {
+  accountId: string
+  accountName: string
+  totalInflow: number
+  totalOutflow: number
+  netChange: number
+  transactionCount: number
+}

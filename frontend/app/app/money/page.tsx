@@ -8,6 +8,7 @@ import { SpendingBreakdown } from '@/components/dashboard/SpendingBreakdown'
 import { TopMerchants } from '@/components/dashboard/TopMerchants'
 import { AttentionBanner } from '@/components/dashboard/AttentionBanner'
 import { ReconciliationReviewPanel } from '@/components/reconciliation/ReconciliationReviewPanel'
+import { FinancialSourceCard } from '@/components/financial/FinancialSourceCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils/format'
 
@@ -148,6 +149,27 @@ export default function MoneyPage() {
 
           {/* Summary stats row */}
           <SummaryCards data={data} />
+
+          {/* My Financial Sources */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              My Financial Sources
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {data.sourceSummaries?.map(source => (
+                <FinancialSourceCard
+                  key={source.id}
+                  source={{
+                    name: source.name,
+                    institution: source.institution,
+                    currentBalance: formatCurrency(source.currentBalance),
+                    totalSpending: formatCurrency(source.totalSpending),
+                    isCard: source.isCard
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
           {/* Attention banner */}
           {data.pendingReviewCount > 0 && (

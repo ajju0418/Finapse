@@ -58,9 +58,23 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
       .finally(() => setLoading(false))
   }, [statementId, cardId, accountId])
 
+  async function handleTypeChange(id: string, newType: TransactionType) {
+    try {
+      const updatedTx = await transactionsApi.updateType(id, newType)
+      setTransactions(prev => prev.map(tx => tx.id === id ? updatedTx : tx))
+    } catch (e) {
+      console.error('Failed to update transaction type', e)
+    }
+  }
+
   if (loading) return <p className="text-sm text-gray-500 py-4">Loading transactions…</p>
   if (error)   return <p className="text-sm text-red-500 py-4">{error}</p>
   if (transactions.length === 0) return <p className="text-sm text-gray-500 py-4">No transactions found.</p>
+
+  const availableTypes: TransactionType[] = [
+    'EXPENSE', 'INCOME', 'TRANSFER', 'CREDIT_CARD_PAYMENT',
+    'CASHBACK', 'REFUND', 'FEE', 'INTEREST', 'UNKNOWN'
+  ]
 
   return (
     <div className="overflow-x-auto">
@@ -87,9 +101,17 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
                 {tx.merchantName ?? <span className="text-gray-400">—</span>}
               </td>
               <td className="py-2 pr-4">
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_STYLES[tx.transactionType]}`}>
-                  {tx.transactionType.replace(/_/g, ' ')}
-                </span>
+                <select
+                  value={tx.transactionType}
+                  onChange={(e) => handleTypeChange(tx.id, e.target.value as TransactionType)}
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border-0 cursor-pointer focus:ring-2 focus:ring-primary outline-none ${TYPE_STYLES[tx.transactionType]}`}
+                >
+                  {availableTypes.map(type => (
+                    <option key={type} value={type} className="bg-background text-foreground">
+                      {type.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
               </td>
               <td className={`py-2 text-right font-medium whitespace-nowrap ${amountColor(tx)}`}>
                 {amountSign(tx)}{formatCurrency(tx.amount)}
