@@ -29,6 +29,11 @@ public class StatementController {
         return ResponseEntity.ok(statementService.getById(id));
     }
 
+    @PostMapping("/{id}/reclassify")
+    public ResponseEntity<StatementResponse> reclassify(@PathVariable UUID id) {
+        return ResponseEntity.ok(statementService.reclassify(id));
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<StatementResponse> upload(
             @RequestParam("file") MultipartFile file,

@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react'
+import { Zap } from 'lucide-react'
 
 interface Props {
   count: number
@@ -8,23 +8,25 @@ export function AttentionBanner({ count }: Props) {
   if (count === 0) return null
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-yellow-300 bg-yellow-50 px-5 py-4">
+    <div className="flex items-center justify-between rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
       <div className="flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20">
+          <Zap className="h-4 w-4 text-amber-400" />
+        </div>
         <div>
-          <p className="text-sm font-semibold text-yellow-800">
-            {count} {count === 1 ? 'item needs' : 'items need'} your attention
+          <p className="text-sm font-semibold text-amber-300">
+            {count} {count === 1 ? 'transaction needs' : 'transactions need'} review
           </p>
-          <p className="text-xs text-yellow-700 mt-0.5">
-            Finapse detected possible duplicates, card payments, or refunds that need review.
+          <p className="text-xs text-amber-400/70 mt-0.5">
+            Possible duplicates, card payments, or refunds detected.
           </p>
         </div>
       </div>
       <a
         href="/app/money#reviews"
-        className="shrink-0 rounded-md bg-yellow-600 px-4 py-2 text-xs font-semibold text-white hover:bg-yellow-700 transition-colors"
+        className="shrink-0 rounded-lg bg-amber-500/20 border border-amber-500/30 px-4 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30 transition-colors"
       >
-        Review
+        Review →
       </a>
     </div>
   )

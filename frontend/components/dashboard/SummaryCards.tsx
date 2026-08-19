@@ -1,5 +1,6 @@
 import { formatCurrency } from '@/lib/utils/format'
 import type { DashboardData } from '@/types/dashboard'
+import { TrendingUp, TrendingDown, ArrowDownLeft, Sparkles } from 'lucide-react'
 
 interface Props {
   data: DashboardData
@@ -10,45 +11,65 @@ export function SummaryCards({ data }: Props) {
     {
       label: 'Income',
       value: data.income,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
+      valueClass: 'text-primary',
+      icon: TrendingUp,
+      iconClass: 'text-primary',
+      glow: 'shadow-primary/10',
+      sub: null,
+    },
+    {
+      label: 'Gross Expenses',
+      value: data.grossExpenses,
+      valueClass: 'text-destructive',
+      icon: TrendingDown,
+      iconClass: 'text-destructive',
+      glow: 'shadow-destructive/10',
+      sub: data.refunds > 0 ? `−${formatCurrency(data.refunds)} refunded` : null,
     },
     {
       label: 'Actual Spending',
       value: data.actualSpending,
-      color: 'text-red-600',
-      bg: 'bg-red-50',
-      sub: data.refunds > 0 ? `${formatCurrency(data.refunds)} refunded` : undefined,
+      valueClass: 'text-orange-400',
+      icon: ArrowDownLeft,
+      iconClass: 'text-orange-400',
+      glow: 'shadow-orange-500/10',
+      sub: 'after refunds',
     },
     {
-      label: 'Net Cash Flow',
-      value: data.netCashFlow,
-      color: data.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600',
-      bg: data.netCashFlow >= 0 ? 'bg-green-50' : 'bg-red-50',
-    },
-    {
-      label: 'Cashback',
+      label: 'Cashback Earned',
       value: data.cashback,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
+      valueClass: 'text-emerald-400',
+      icon: Sparkles,
+      iconClass: 'text-emerald-400',
+      glow: 'shadow-emerald-500/10',
+      sub: null,
     },
   ]
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map(card => (
-        <div key={card.label} className={`rounded-xl border border-border p-5 ${card.bg}`}>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-            {card.label}
-          </p>
-          <p className={`text-2xl font-bold ${card.color}`}>
-            {formatCurrency(card.value)}
-          </p>
-          {card.sub && (
-            <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
-          )}
-        </div>
-      ))}
+      {cards.map(card => {
+        const Icon = card.icon
+        return (
+          <div
+            key={card.label}
+            className={`relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-lg ${card.glow}`}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                {card.label}
+              </p>
+              <Icon className={`h-3.5 w-3.5 ${card.iconClass} opacity-70`} />
+            </div>
+            <p className={`text-2xl font-black tracking-tight ${card.valueClass}`}>
+              {formatCurrency(card.value)}
+            </p>
+            {card.sub && (
+              <p className="text-xs text-muted-foreground mt-1.5">{card.sub}</p>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

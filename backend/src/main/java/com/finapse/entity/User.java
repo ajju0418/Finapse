@@ -16,7 +16,6 @@ import java.util.UUID;
 public class User {
 
     @Id
-    @UuidGenerator
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID id;

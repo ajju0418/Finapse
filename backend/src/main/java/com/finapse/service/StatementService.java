@@ -41,6 +41,7 @@ public class StatementService {
     private final TransactionNormalizationService normalizationService;
     private final TransactionClassificationService classificationService;
     private final MerchantService merchantService;
+    private final CategoryInferenceService categoryInferenceService;
     private final DuplicateDetectionService duplicateDetectionService;
     private final ReconciliationService reconciliationService;
 
@@ -131,6 +132,7 @@ public class StatementService {
             Transaction tx = normalizationService.normalize(raw, statement, account, card);
             tx.setTransactionType(classificationService.classify(tx));
             tx.setMerchant(merchantService.resolveForTransaction(tx));
+            tx.setCategory(categoryInferenceService.infer(tx.getDescription()));
             transactions.add(tx);
         }
         transactionRepository.saveAll(transactions);
@@ -188,6 +190,25 @@ public class StatementService {
         if (file.isEmpty()) {
             throw new InvalidCsvException("The uploaded file is empty.");
         }
+    }
+
+    /**
+     * Re-runs classification and category inference on every transaction belonging to
+     * this statement. Safe to call multiple times — idempotent.
+     */
+    @Transactional
+    public StatementResponse reclassify(UUID statementId) {
+        Statement statement = findOrThrow(statementId);
+        List<Transaction> transactions = transactionRepository.findByStatementIdOrderByTransactionDateDesc(statementId);
+
+        for (Transaction tx : transactions) {
+            tx.setTransactionType(classificationService.classify(tx));
+            tx.setCategory(categoryInferenceService.infer(tx.getDescription()));
+        }
+        transactionRepository.saveAll(transactions);
+
+        log.info("Reclassified {} transactions for statement {}", transactions.size(), statementId);
+        return StatementResponse.from(statement);
     }
 
     public Statement findOrThrow(UUID id) {

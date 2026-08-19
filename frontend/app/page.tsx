@@ -68,10 +68,10 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* Without Finapse */}
           <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-8 grayscale opacity-60">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
+            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-muted-foreground" />
               Legacy View
-            </p>
+            </div>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
@@ -119,10 +119,10 @@ export default function LandingPage() {
             <div className="absolute top-0 right-0 p-4">
                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+            <div className="text-xs font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
               Intelligence View
-            </p>
+            </div>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">

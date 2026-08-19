@@ -17,6 +17,24 @@ const TYPE_STYLES: Record<TransactionType, string> = {
   UNKNOWN:             'bg-gray-100 text-gray-600',
 }
 
+// Types where money leaves the user's pocket — always show red with −
+const MONEY_OUT: TransactionType[] = ['EXPENSE', 'FEE', 'INTEREST', 'CREDIT_CARD_PAYMENT']
+// Types where money comes back — always show green with +
+const MONEY_IN: TransactionType[]  = ['INCOME', 'CASHBACK', 'REFUND']
+
+function amountColor(tx: Transaction): string {
+  if (MONEY_OUT.includes(tx.transactionType)) return 'text-red-600'
+  if (MONEY_IN.includes(tx.transactionType))  return 'text-green-600'
+  // TRANSFER / UNKNOWN — fall back to raw direction
+  return tx.direction === 'DEBIT' ? 'text-red-600' : 'text-green-600'
+}
+
+function amountSign(tx: Transaction): string {
+  if (MONEY_OUT.includes(tx.transactionType)) return '−'
+  if (MONEY_IN.includes(tx.transactionType))  return '+'
+  return tx.direction === 'DEBIT' ? '−' : '+'
+}
+
 type Props =
   | { statementId: string; cardId?: never; accountId?: never }
   | { cardId: string; statementId?: never; accountId?: never }
@@ -73,8 +91,8 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
                   {tx.transactionType.replace(/_/g, ' ')}
                 </span>
               </td>
-              <td className={`py-2 text-right font-medium whitespace-nowrap ${tx.direction === 'DEBIT' ? 'text-red-600' : 'text-green-600'}`}>
-                {tx.direction === 'DEBIT' ? '−' : '+'}{formatCurrency(tx.amount)}
+              <td className={`py-2 text-right font-medium whitespace-nowrap ${amountColor(tx)}`}>
+                {amountSign(tx)}{formatCurrency(tx.amount)}
               </td>
             </tr>
           ))}
