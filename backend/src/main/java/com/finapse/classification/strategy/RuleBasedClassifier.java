@@ -54,29 +54,40 @@ public class RuleBasedClassifier implements ClassificationStrategy {
     @Override
     public ClassificationResult classify(ClassificationContext context) {
         String desc = context.getNormalizedNarration();
+        String compactDesc = compact(desc);
         TransactionDirection dir = context.getDirection();
 
         // Credits
         if (dir == TransactionDirection.CREDIT) {
-            if (desc.contains("REVERSAL") && containsAny(desc, CASHBACK_KEYWORDS)) {
+            if (context.getTransaction() != null
+                    && context.getTransaction().getCard() != null
+                    && containsAny(desc, compactDesc, CARD_PAYMENT_KEYWORDS)) {
+                return buildResult(TransactionType.CREDIT_CARD_PAYMENT, 0.95, "Card payment keywords found on card credit");
+            }
+            if (containsToken(compactDesc, "REVERSAL") && containsAny(desc, compactDesc, CASHBACK_KEYWORDS)) {
                 return buildResult(TransactionType.REFUND, 0.95, "Cashback reversal");
             }
-            if (containsAny(desc, CASHBACK_KEYWORDS)) return buildResult(TransactionType.CASHBACK, 0.95, "Cashback keywords found");
-            if (containsAny(desc, REFUND_KEYWORDS)) return buildResult(TransactionType.REFUND, 0.95, "Refund keywords found");
-            if (containsAny(desc, INCOME_KEYWORDS)) return buildResult(TransactionType.INCOME, 0.90, "Income keywords found");
-            if (containsAny(desc, INTEREST_KEYWORDS)) return buildResult(TransactionType.INTEREST, 0.90, "Interest keywords found");
-            if (containsAny(desc, TRANSFER_KEYWORDS)) return buildResult(TransactionType.TRANSFER, 0.85, "Explicit transfer keywords found");
+            if (containsAny(desc, compactDesc, CASHBACK_KEYWORDS)) return buildResult(TransactionType.CASHBACK, 0.95, "Cashback keywords found");
+            if (containsAny(desc, compactDesc, REFUND_KEYWORDS)) return buildResult(TransactionType.REFUND, 0.95, "Refund keywords found");
+            if (containsAny(desc, compactDesc, INCOME_KEYWORDS)) return buildResult(TransactionType.INCOME, 0.90, "Income keywords found");
+            if (containsAny(desc, compactDesc, INTEREST_KEYWORDS)) return buildResult(TransactionType.INTEREST, 0.90, "Interest keywords found");
+            if (containsAny(desc, compactDesc, TRANSFER_KEYWORDS)) return buildResult(TransactionType.TRANSFER, 0.85, "Explicit transfer keywords found");
             
-            // Generic credit
+            // Card statements usually export purchase rows as CREDIT entries; treat these as expense.
+            if (context.getTransaction() != null && context.getTransaction().getCard() != null) {
+                return buildResult(TransactionType.EXPENSE, 0.80, "Card credit defaulting to expense");
+            }
+
+            // Generic credit (bank/account side)
             return buildResult(TransactionType.INCOME, 0.60, "Generic credit defaulting to income");
         }
 
         // Debits
         if (dir == TransactionDirection.DEBIT) {
-            if (containsAny(desc, CARD_PAYMENT_KEYWORDS)) return buildResult(TransactionType.CREDIT_CARD_PAYMENT, 0.95, "Card payment keywords found");
-            if (containsAny(desc, FEE_KEYWORDS)) return buildResult(TransactionType.FEE, 0.90, "Fee keywords found");
-            if (containsAny(desc, INTEREST_KEYWORDS)) return buildResult(TransactionType.INTEREST, 0.90, "Interest keywords found");
-            if (containsAny(desc, TRANSFER_KEYWORDS)) return buildResult(TransactionType.TRANSFER, 0.85, "Explicit transfer keywords found");
+            if (containsAny(desc, compactDesc, CARD_PAYMENT_KEYWORDS)) return buildResult(TransactionType.CREDIT_CARD_PAYMENT, 0.95, "Card payment keywords found");
+            if (containsAny(desc, compactDesc, FEE_KEYWORDS)) return buildResult(TransactionType.FEE, 0.90, "Fee keywords found");
+            if (containsAny(desc, compactDesc, INTEREST_KEYWORDS)) return buildResult(TransactionType.INTEREST, 0.90, "Interest keywords found");
+            if (containsAny(desc, compactDesc, TRANSFER_KEYWORDS)) return buildResult(TransactionType.TRANSFER, 0.85, "Explicit transfer keywords found");
             
             // Generic debit
             return buildResult(TransactionType.EXPENSE, 0.60, "Generic debit defaulting to expense");
@@ -100,10 +111,19 @@ public class RuleBasedClassifier implements ClassificationStrategy {
         return 4;
     }
 
-    private boolean containsAny(String text, List<String> keywords) {
+    private boolean containsAny(String text, String compactText, List<String> keywords) {
         for (String kw : keywords) {
-            if (text.contains(kw)) return true;
+            if (text.contains(kw) || compactText.contains(compact(kw))) return true;
         }
         return false;
+    }
+
+    private boolean containsToken(String compactText, String token) {
+        return compactText.contains(compact(token));
+    }
+
+    private String compact(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^A-Z0-9]", "");
     }
 }
