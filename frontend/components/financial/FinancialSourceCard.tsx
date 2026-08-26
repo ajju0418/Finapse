@@ -6,8 +6,7 @@ import {
   TrendingDown,
   CreditCard,
   Building2,
-  ArrowUpRight,
-  ArrowDownLeft
+  Trash2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,18 +20,31 @@ interface FinancialSourceCardProps {
     isCard: boolean
   }
   onClick?: () => void
+  onDelete?: () => void
 }
 
-export function FinancialSourceCard({ source, onClick }: FinancialSourceCardProps) {
+export function FinancialSourceCard({ source, onClick, onDelete }: FinancialSourceCardProps) {
   const { name, institution, currentBalance, totalSpending, isCard } = source
 
   return (
     <Card
-      className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+      className="group cursor-pointer transition-all hover:shadow-md hover:border-primary/50 relative"
       onClick={onClick}
     >
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute top-3 right-3 p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all z-10"
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pr-8">
           <div className="p-2 rounded-lg bg-primary/10 text-primary">
             {isCard ? <CreditCard className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
           </div>

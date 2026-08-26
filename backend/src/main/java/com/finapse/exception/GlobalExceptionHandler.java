@@ -23,6 +23,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(409, "DUPLICATE_STATEMENT", ex.getMessage()));
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(409, "CONFLICT", ex.getMessage()));
+    }
+
     @ExceptionHandler(InvalidStatementFileException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCsv(InvalidStatementFileException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

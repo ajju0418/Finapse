@@ -45,6 +45,20 @@ export default function BanksPage() {
     setShowForm(false)
   }
 
+  async function handleDeleteAccount(id: string) {
+    if (!window.confirm("Are you sure you want to delete this bank account?")) return;
+    try {
+      await accountsApi.delete(id);
+      setAccounts(prev => prev.filter(a => a.id !== id));
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        alert("Cannot delete: Please delete associated statements first.");
+      } else {
+        alert("Failed to delete account. Please try again.");
+      }
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
@@ -108,6 +122,7 @@ export default function BanksPage() {
             return (
               <FinancialSourceCard
                 key={acc.id}
+                onDelete={() => handleDeleteAccount(acc.id)}
                 source={{
                   name: acc.name,
                   institution: acc.institutionName || 'Unknown Bank',

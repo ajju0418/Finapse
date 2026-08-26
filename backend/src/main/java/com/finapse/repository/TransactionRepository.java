@@ -18,6 +18,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByStatementIdOrderByTransactionDateDesc(UUID statementId);
 
+    void deleteByStatementId(UUID statementId);
+
     List<Transaction> findByAccountIdOrderByTransactionDateDesc(UUID accountId);
 
     List<Transaction> findByCardIdOrderByTransactionDateDesc(UUID cardId);

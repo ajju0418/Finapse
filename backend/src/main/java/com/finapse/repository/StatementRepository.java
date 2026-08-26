@@ -15,4 +15,8 @@ public interface StatementRepository extends JpaRepository<Statement, UUID> {
     Optional<Statement> findByUserIdAndFileHash(UUID userId, String fileHash);
 
     List<Statement> findByUserIdAndImportStatus(UUID userId, ImportStatus importStatus);
+
+    boolean existsByAccountId(UUID accountId);
+
+    boolean existsByCardId(UUID cardId);
 }

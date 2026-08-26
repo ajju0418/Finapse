@@ -20,6 +20,6 @@ public class StatementParserFactory {
                 .filter(parser -> parser.supports(fileName))
                 .findFirst()
                 .orElseThrow(() -> new InvalidStatementFileException(
-                        "Unsupported file type. Please upload a .csv, .xls, or .xlsx file."));
+                        "Unsupported file type. Please upload a .csv, .xls, .xlsx, or .pdf file."));
     }
 }

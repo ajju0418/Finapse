@@ -44,6 +44,20 @@ export default function CardsPage() {
     setShowForm(false)
   }
 
+  async function handleDeleteCard(id: string) {
+    if (!window.confirm("Are you sure you want to delete this credit card?")) return;
+    try {
+      await cardsApi.delete(id);
+      setCards(prev => prev.filter(c => c.id !== id));
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        alert("Cannot delete: Please delete associated statements first.");
+      } else {
+        alert("Failed to delete card. Please try again.");
+      }
+    }
+  }
+
   return (
       <div className="p-8">
         <div className="mb-6 flex items-center justify-between">
@@ -118,6 +132,7 @@ export default function CardsPage() {
               return (
                 <FinancialSourceCard
                   key={card.id}
+                  onDelete={() => handleDeleteCard(card.id)}
                   source={{
                     name: card.name,
                     institution: card.issuer || 'Unknown Issuer',

@@ -5,17 +5,18 @@ import { cardsApi } from '@/lib/api/cards'
 import type { Card } from '@/types/card'
 
 interface Props {
+  initialData?: Card | null
   onCreated: (card: Card) => void
   onCancel: () => void
 }
 
-export function AddCardForm({ onCreated, onCancel }: Props) {
-  const [name, setName] = useState('')
-  const [issuer, setIssuer] = useState('')
-  const [lastFourDigits, setLastFourDigits] = useState('')
-  const [creditLimit, setCreditLimit] = useState('')
-  const [billingCycleDay, setBillingCycleDay] = useState('')
-  const [paymentDueDay, setPaymentDueDay] = useState('')
+export function AddCardForm({ initialData, onCreated, onCancel }: Props) {
+  const [name, setName] = useState(initialData?.name || '')
+  const [issuer, setIssuer] = useState(initialData?.issuer || '')
+  const [lastFourDigits, setLastFourDigits] = useState(initialData?.lastFourDigits || '')
+  const [creditLimit, setCreditLimit] = useState(initialData?.creditLimit ? String(initialData.creditLimit) : '')
+  const [billingCycleDay, setBillingCycleDay] = useState(initialData?.billingCycleDay ? String(initialData.billingCycleDay) : '')
+  const [paymentDueDay, setPaymentDueDay] = useState(initialData?.paymentDueDay ? String(initialData.paymentDueDay) : '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -24,18 +25,24 @@ export function AddCardForm({ onCreated, onCancel }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const card = await cardsApi.create({
+      const payload = {
         name,
         issuer: issuer || null,
         lastFourDigits: lastFourDigits || null,
         creditLimit: creditLimit ? parseFloat(creditLimit) : null,
         billingCycleDay: billingCycleDay ? parseInt(billingCycleDay) : null,
         paymentDueDay: paymentDueDay ? parseInt(paymentDueDay) : null,
-        isActive: true,
-      })
+      }
+      
+      let card;
+      if (initialData) {
+        card = await cardsApi.update(initialData.id, payload)
+      } else {
+        card = await cardsApi.create(payload)
+      }
       onCreated(card)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create card')
+      setError(err instanceof Error ? err.message : `Failed to ${initialData ? 'update' : 'create'} card`)
     } finally {
       setLoading(false)
     }
@@ -134,7 +141,7 @@ export function AddCardForm({ onCreated, onCancel }: Props) {
           disabled={loading}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {loading ? 'Adding…' : 'Add Card'}
+          {loading ? (initialData ? 'Updating…' : 'Adding…') : (initialData ? 'Update Card' : 'Add Card')}
         </button>
       </div>
     </form>

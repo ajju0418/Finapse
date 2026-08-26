@@ -6,8 +6,10 @@ import com.finapse.dto.CardResponse;
 import com.finapse.entity.Card;
 import com.finapse.entity.Transaction;
 import com.finapse.enums.TransactionType;
+import com.finapse.exception.ConflictException;
 import com.finapse.exception.ResourceNotFoundException;
 import com.finapse.repository.CardRepository;
+import com.finapse.repository.StatementRepository;
 import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ public class CardService {
     private final CardRepository cardRepository;
     private final UserService userService;
     private final TransactionRepository transactionRepository;
+    private final StatementRepository statementRepository;
 
     @Transactional(readOnly = true)
     public List<CardResponse> getAll() {
@@ -57,6 +60,26 @@ public class CardService {
         Card card = findOrThrow(id);
         card.setActive(false);
         return CardResponse.from(cardRepository.save(card));
+    }
+
+    @Transactional
+    public CardResponse update(UUID id, CardCreateRequest request) {
+        Card card = findOrThrow(id);
+        card.setName(request.name());
+        card.setIssuer(request.issuer());
+        card.setLastFourDigits(request.lastFourDigits());
+        if (request.creditLimit() != null) card.setCreditLimit(request.creditLimit());
+        if (request.billingCycleDay() != null) card.setBillingCycleDay(request.billingCycleDay());
+        if (request.paymentDueDay() != null) card.setPaymentDueDay(request.paymentDueDay());
+        return CardResponse.from(cardRepository.save(card));
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        if (statementRepository.existsByCardId(id)) {
+            throw new ConflictException("Cannot delete card because it has linked statements. Delete the statements first, or deactivate the card.");
+        }
+        cardRepository.deleteById(id);
     }
 
     @Transactional(readOnly = true)

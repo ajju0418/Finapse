@@ -44,4 +44,15 @@ public class AccountController {
     public ResponseEntity<AccountResponse> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(accountService.deactivate(id));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<AccountResponse> update(@PathVariable UUID id, @Valid @RequestBody AccountCreateRequest request) {
+        return ResponseEntity.ok(accountService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        accountService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -44,4 +44,15 @@ public class CardController {
     public ResponseEntity<CardResponse> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(cardService.deactivate(id));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CardResponse> update(@PathVariable UUID id, @Valid @RequestBody CardCreateRequest request) {
+        return ResponseEntity.ok(cardService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        cardService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

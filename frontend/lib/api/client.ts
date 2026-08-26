@@ -7,7 +7,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
-    throw new Error(error.message ?? 'Request failed')
+    const errorMsg = error?.message || error?.error || 'Request failed'
+    const errObj = new Error(errorMsg)
+    ;(errObj as any).response = { status: res.status }
+    throw errObj
+  }
+  if (res.status === 204) {
+    return {} as T
   }
   return res.json() as Promise<T>
 }
@@ -24,4 +30,8 @@ export const apiClient = {
     }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: <T = void>(path: string) =>
+    request<T>(path, { method: 'DELETE' }),
 }

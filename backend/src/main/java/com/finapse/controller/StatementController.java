@@ -44,4 +44,10 @@ public class StatementController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(statementService.upload(file, statementType, accountId, cardId));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        statementService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }

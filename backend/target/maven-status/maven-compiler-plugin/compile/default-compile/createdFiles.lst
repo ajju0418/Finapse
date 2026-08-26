@@ -28,6 +28,7 @@ com\finapse\entity\ReconciliationReview.class
 com\finapse\controller\ReconciliationController.class
 com\finapse\enums\TransactionType.class
 com\finapse\classification\strategy\ClassificationStrategy.class
+com\finapse\service\HdfcPdfStatementParser.class
 com\finapse\exception\ResourceNotFoundException.class
 com\finapse\service\MerchantService.class
 com\finapse\enums\ClassificationSource.class
@@ -42,6 +43,7 @@ com\finapse\repository\UserRepository.class
 com\finapse\service\DashboardService$1MerchantAgg.class
 com\finapse\exception\InvalidStatementFileException.class
 com\finapse\dto\MerchantSpendingDto.class
+com\finapse\exception\ConflictException.class
 com\finapse\repository\CardRepository.class
 com\finapse\controller\StatementController.class
 com\finapse\exception\CsvParseException.class

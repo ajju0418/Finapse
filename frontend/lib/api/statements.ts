@@ -5,4 +5,5 @@ export const statementsApi = {
   getAll: () => apiClient.get<Statement[]>('/statements'),
   getById: (id: string) => apiClient.get<Statement>(`/statements/${id}`),
   upload: (form: FormData) => apiClient.postForm<Statement>('/statements/upload', form),
+  delete: (id: string) => apiClient.delete(`/statements/${id}`),
 }

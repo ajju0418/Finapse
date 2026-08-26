@@ -58,7 +58,7 @@ public class Transaction {
     @Column(name = "posted_date")
     private LocalDate postedDate;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 2000)
     private String description;
 
     @Column(nullable = false, precision = 15, scale = 2)

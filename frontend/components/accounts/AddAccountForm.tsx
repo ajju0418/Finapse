@@ -8,27 +8,33 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 
 interface Props {
+  initialData?: Account | null
   onCreated: (account: Account) => void
   onCancel: () => void
 }
 
-export function AddAccountForm({ onCreated, onCancel }: Props) {
+export function AddAccountForm({ initialData, onCreated, onCancel }: Props) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    name: '',
-    institutionName: '',
-    lastFourDigits: '',
-    currency: 'INR'
+    name: initialData?.name || '',
+    institutionName: initialData?.institutionName || '',
+    lastFourDigits: initialData?.lastFourDigits || '',
+    currency: initialData?.currency || 'INR'
   })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      const account = await accountsApi.create(formData)
+      let account;
+      if (initialData) {
+        account = await accountsApi.update(initialData.id, formData)
+      } else {
+        account = await accountsApi.create(formData)
+      }
       onCreated(account)
     } catch (err) {
-      alert('Failed to create account. Please try again.')
+      alert(`Failed to ${initialData ? 'update' : 'create'} account. Please try again.`)
     } finally {
       setLoading(false)
     }
@@ -74,7 +80,7 @@ export function AddAccountForm({ onCreated, onCancel }: Props) {
           Cancel
         </Button>
         <Button type="submit" className="flex-1" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Account'}
+          {loading ? (initialData ? 'Updating...' : 'Creating...') : (initialData ? 'Update Account' : 'Create Account')}
         </Button>
       </div>
     </form>

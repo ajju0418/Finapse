@@ -6,8 +6,10 @@ import com.finapse.dto.AccountAnalyticsResponse;
 import com.finapse.entity.Account;
 import com.finapse.entity.Transaction;
 import com.finapse.enums.TransactionDirection;
+import com.finapse.exception.ConflictException;
 import com.finapse.exception.ResourceNotFoundException;
 import com.finapse.repository.AccountRepository;
+import com.finapse.repository.StatementRepository;
 import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final StatementRepository statementRepository;
     private final UserService userService;
 
     @Transactional(readOnly = true)
@@ -57,6 +60,26 @@ public class AccountService {
         Account account = findOrThrow(id);
         account.setActive(false);
         return AccountResponse.from(accountRepository.save(account));
+    }
+
+    @Transactional
+    public AccountResponse update(UUID id, AccountCreateRequest request) {
+        Account account = findOrThrow(id);
+        account.setName(request.name());
+        account.setInstitutionName(request.institutionName());
+        account.setLastFourDigits(request.lastFourDigits());
+        if (request.currency() != null) {
+            account.setCurrency(request.currency().toUpperCase());
+        }
+        return AccountResponse.from(accountRepository.save(account));
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        if (statementRepository.existsByAccountId(id)) {
+            throw new ConflictException("Cannot delete account because it has linked statements. Delete the statements first, or deactivate the account.");
+        }
+        accountRepository.deleteById(id);
     }
 
     @Transactional(readOnly = true)

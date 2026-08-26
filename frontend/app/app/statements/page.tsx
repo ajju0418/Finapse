@@ -27,6 +27,16 @@ export default function StatementsPage() {
     setSelectedId(statement.id)
   }
 
+  async function handleDeleteStatement(id: string) {
+    try {
+      await statementsApi.delete(id);
+      setStatements(prev => prev.filter(s => s.id !== id));
+      if (selectedId === id) setSelectedId(null);
+    } catch (err) {
+      alert("Failed to delete statement. Please try again.");
+    }
+  }
+
   const selected = statements.find(s => s.id === selectedId)
 
   return (
@@ -88,6 +98,7 @@ export default function StatementsPage() {
               statements={statements}
               selectedId={selectedId}
               onSelect={id => setSelectedId(prev => prev === id ? null : id)}
+              onDelete={handleDeleteStatement}
             />
 
             {selected && (

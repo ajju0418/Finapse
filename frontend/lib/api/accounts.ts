@@ -7,4 +7,7 @@ export const accountsApi = {
   getAnalytics: (id: string) => apiClient.get<AccountAnalyticsResponse>(`/accounts/${id}/analytics`),
   create: (data: Pick<Account, 'name' | 'institutionName' | 'lastFourDigits' | 'currency'>) =>
     apiClient.post<Account>('/accounts', data),
+  update: (id: string, data: Pick<Account, 'name' | 'institutionName' | 'lastFourDigits' | 'currency'>) =>
+    apiClient.put<Account>(`/accounts/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/accounts/${id}`),
 }

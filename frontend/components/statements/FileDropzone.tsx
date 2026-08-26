@@ -15,8 +15,8 @@ export function FileDropzone({ onFileSelected, disabled }: Props) {
 
   function handleFile(file: File) {
     const lowerName = file.name.toLowerCase()
-    if (!lowerName.endsWith('.csv') && !lowerName.endsWith('.xls') && !lowerName.endsWith('.xlsx')) {
-      alert('Only CSV and Excel files are accepted.')
+    if (!lowerName.endsWith('.csv') && !lowerName.endsWith('.xls') && !lowerName.endsWith('.xlsx') && !lowerName.endsWith('.pdf')) {
+      alert('Only CSV, Excel, and PDF files are accepted.')
       return
     }
     setSelectedFile(file)
@@ -75,12 +75,12 @@ export function FileDropzone({ onFileSelected, disabled }: Props) {
       <p className="text-sm font-medium">Drag & drop your statement</p>
       <p className="text-xs text-muted-foreground mt-1">or click to browse</p>
       <p className="mt-3 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-        CSV and Excel files
+        CSV, Excel, and PDF files
       </p>
       <input
         ref={inputRef}
         type="file"
-        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/pdf"
         className="hidden"
         onChange={handleChange}
         disabled={disabled}

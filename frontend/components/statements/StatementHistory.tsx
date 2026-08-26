@@ -1,11 +1,12 @@
 import type { Statement } from '@/types/statement'
 import { formatDate } from '@/lib/utils/format'
-import { CheckCircle2, AlertTriangle, XCircle, Clock } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, XCircle, Clock, Trash2 } from 'lucide-react'
 
 interface Props {
   statements: Statement[]
   selectedId?: string | null
   onSelect?: (id: string) => void
+  onDelete?: (id: string) => void
 }
 
 const statusConfig = {
@@ -17,7 +18,7 @@ const statusConfig = {
   CANCELLED:       { icon: XCircle,      color: 'text-muted-foreground', label: 'Cancelled'      },
 }
 
-export function StatementHistory({ statements, selectedId, onSelect }: Props) {
+export function StatementHistory({ statements, selectedId, onSelect, onDelete }: Props) {
   if (statements.length === 0) return null
 
   return (
@@ -31,6 +32,7 @@ export function StatementHistory({ statements, selectedId, onSelect }: Props) {
             <th className="px-4 py-3 text-right font-medium text-muted-foreground">Transactions</th>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Uploaded</th>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -58,6 +60,22 @@ export function StatementHistory({ statements, selectedId, onSelect }: Props) {
                     <Icon className="h-3.5 w-3.5" />
                     {cfg.label}
                   </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {onDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm("Are you sure you want to delete this statement? This will also delete all associated transactions.")) {
+                          onDelete(s.id);
+                        }
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      title="Delete Statement"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             )

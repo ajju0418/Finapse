@@ -12,7 +12,9 @@ import com.finapse.enums.StatementType;
 import com.finapse.exception.DuplicateStatementException;
 import com.finapse.exception.InvalidStatementFileException;
 import com.finapse.exception.StatementProcessingException;
+import com.finapse.repository.ReconciliationReviewRepository;
 import com.finapse.repository.StatementRepository;
+import com.finapse.repository.TransactionLinkRepository;
 import com.finapse.repository.TransactionRepository;
 import com.finapse.util.HashUtil;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class StatementService {
 
     private final StatementRepository statementRepository;
     private final TransactionRepository transactionRepository;
+    private final TransactionLinkRepository transactionLinkRepository;
+    private final ReconciliationReviewRepository reconciliationReviewRepository;
     private final UserService userService;
     private final AccountService accountService;
     private final CardService cardService;
@@ -55,6 +59,15 @@ public class StatementService {
     @Transactional(readOnly = true)
     public StatementResponse getById(UUID id) {
         return StatementResponse.from(findOrThrow(id));
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        Statement statement = findOrThrow(id);
+        reconciliationReviewRepository.deleteByStatementId(id);
+        transactionLinkRepository.deleteByStatementId(id);
+        transactionRepository.deleteByStatementId(id);
+        statementRepository.delete(statement);
     }
 
     /**
@@ -180,8 +193,8 @@ public class StatementService {
 
     private void validateFileType(MultipartFile file) {
         String name = file.getOriginalFilename();
-        if (name == null || (!name.toLowerCase().endsWith(".csv") && !name.toLowerCase().endsWith(".xls") && !name.toLowerCase().endsWith(".xlsx"))) {
-            throw new InvalidStatementFileException("Only CSV and Excel files are accepted. Please upload a .csv, .xls, or .xlsx file.");
+        if (name == null || (!name.toLowerCase().endsWith(".csv") && !name.toLowerCase().endsWith(".xls") && !name.toLowerCase().endsWith(".xlsx") && !name.toLowerCase().endsWith(".pdf"))) {
+            throw new InvalidStatementFileException("Only CSV, Excel, and PDF files are accepted. Please upload a .csv, .xls, .xlsx, or .pdf file.");
         }
         if (file.isEmpty()) {
             throw new InvalidStatementFileException("The uploaded file is empty.");
