@@ -124,6 +124,7 @@ CREATE TABLE statements (
     file_hash           CHAR(64)                                                                    NOT NULL,
     transaction_count   INT                                                                         NOT NULL DEFAULT 0,
     import_status       ENUM('UPLOADED','PROCESSING','REVIEW_REQUIRED','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'UPLOADED',
+    import_error        VARCHAR(500)                                                                NULL,
     period_start        DATE                                                                        NULL,
     period_end          DATE                                                                        NULL,
     uploaded_at         DATETIME                                                                    NOT NULL,
@@ -265,3 +266,28 @@ CREATE TABLE user_classification_rules (
 CREATE INDEX idx_ucr_user_id    ON user_classification_rules (user_id);
 CREATE INDEX idx_ucr_is_active  ON user_classification_rules (is_active);
 CREATE INDEX idx_ucr_pattern    ON user_classification_rules (narration_pattern);
+
+-- -------------------------------------------------------------
+-- BUDGETS
+-- A spending cap per category (or overall when category_id is NULL)
+-- for a repeating period. Read-side only; never mutates transactions.
+-- -------------------------------------------------------------
+CREATE TABLE budgets (
+    id               CHAR(36)                              NOT NULL,
+    user_id          CHAR(36)                              NOT NULL,
+    category_id      CHAR(36)                              NULL,
+    limit_amount     DECIMAL(15,2)                         NOT NULL,
+    period           ENUM('WEEKLY','MONTHLY','YEARLY')     NOT NULL DEFAULT 'MONTHLY',
+    alert_threshold  INT                                   NOT NULL DEFAULT 80,
+    is_active        BOOLEAN                               NOT NULL DEFAULT TRUE,
+    created_at       DATETIME                              NOT NULL,
+    updated_at       DATETIME                              NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_budgets_user     FOREIGN KEY (user_id)     REFERENCES users      (id),
+    CONSTRAINT fk_budgets_category FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT chk_budgets_limit     CHECK (limit_amount > 0),
+    CONSTRAINT chk_budgets_threshold CHECK (alert_threshold BETWEEN 1 AND 100)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_budgets_user_id ON budgets (user_id);
+CREATE INDEX idx_budgets_active  ON budgets (is_active);

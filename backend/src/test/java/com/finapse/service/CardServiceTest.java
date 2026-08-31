@@ -88,10 +88,24 @@ class CardServiceTest {
     @Test
     void getById_throwsWhenNotFound() {
         UUID id = UUID.randomUUID();
-        when(cardRepository.findById(id)).thenReturn(Optional.empty());
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(cardRepository.findByIdAndUserId(id, defaultUser.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cardService.getById(id))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getById_scopesLookupToTheSignedInUser() {
+        UUID id = UUID.randomUUID();
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(cardRepository.findByIdAndUserId(id, defaultUser.getId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cardService.getById(id))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        // A global findById would let one user read another user's card.
+        verify(cardRepository, never()).findById(id);
     }
 
     @Test
@@ -102,7 +116,9 @@ class CardServiceTest {
         card.setName("Old Card");
         card.setActive(true);
 
-        when(cardRepository.findById(card.getId())).thenReturn(Optional.of(card));
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(cardRepository.findByIdAndUserId(card.getId(), defaultUser.getId()))
+                .thenReturn(Optional.of(card));
         when(cardRepository.save(card)).thenReturn(card);
 
         CardResponse response = cardService.deactivate(card.getId());

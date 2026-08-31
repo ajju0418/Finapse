@@ -3,7 +3,7 @@ package com.finapse.service;
 import com.finapse.dto.*;
 import com.finapse.entity.Transaction;
 import com.finapse.enums.TransactionType;
-import com.finapse.repository.TransactionRepository;
+import com.finapse.exception.BadRequestException;
 import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -27,8 +29,13 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard(String period) {
+        return getDashboard(period, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardResponse getDashboard(String period, LocalDate customFrom, LocalDate customTo) {
         UUID userId = userService.getCurrentUserId();
-        LocalDate[] range = resolvePeriod(period);
+        LocalDate[] range = resolveRange(period, customFrom, customTo);
         LocalDate from = range[0];
         LocalDate to = range[1];
 
@@ -125,9 +132,99 @@ public class DashboardService {
     }
 
     /**
-     * Resolves a period string to [from, to] date range.
+     * Month-by-month income / spending / net cash-flow series, oldest bucket first.
+     * Backs the trend chart and month-over-month comparison.
      */
-    private LocalDate[] resolvePeriod(String period) {
+    @Transactional(readOnly = true)
+    public TrendResponse getTrends(int months, LocalDate customFrom, LocalDate customTo) {
+        UUID userId = userService.getCurrentUserId();
+
+        LocalDate to;
+        LocalDate from;
+        if (customFrom != null && customTo != null) {
+            validateCustomRange(customFrom, customTo);
+            from = customFrom.withDayOfMonth(1);
+            to = YearMonth.from(customTo).atEndOfMonth();
+        } else {
+            int span = Math.min(Math.max(months, 1), 36);
+            YearMonth current = YearMonth.from(LocalDate.now());
+            from = current.minusMonths(span - 1L).atDay(1);
+            to = current.atEndOfMonth();
+        }
+
+        Map<YearMonth, BigDecimal[]> buckets = new LinkedHashMap<>();
+        Map<YearMonth, Integer> counts = new LinkedHashMap<>();
+        for (YearMonth ym = YearMonth.from(from); !ym.isAfter(YearMonth.from(to)); ym = ym.plusMonths(1)) {
+            buckets.put(ym, new BigDecimal[]{ BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO });
+            counts.put(ym, 0);
+        }
+
+        for (Transaction tx : transactionRepository.findByUserAndDateRange(userId, from, to)) {
+            YearMonth ym = YearMonth.from(tx.getTransactionDate());
+            BigDecimal[] slot = buckets.get(ym);
+            if (slot == null) continue;
+            counts.merge(ym, 1, Integer::sum);
+            switch (tx.getTransactionType()) {
+                case INCOME   -> slot[0] = slot[0].add(tx.getAmount());
+                case EXPENSE  -> slot[1] = slot[1].add(tx.getAmount());
+                case REFUND   -> slot[2] = slot[2].add(tx.getAmount());
+                case CASHBACK -> slot[3] = slot[3].add(tx.getAmount());
+                default -> { /* transfers, card payments and fees are not spending */ }
+            }
+        }
+
+        List<TrendPointDto> points = new ArrayList<>();
+        for (Map.Entry<YearMonth, BigDecimal[]> entry : buckets.entrySet()) {
+            BigDecimal[] slot = entry.getValue();
+            BigDecimal actual = slot[1].subtract(slot[2]).max(BigDecimal.ZERO);
+            points.add(new TrendPointDto(
+                    entry.getKey().toString(),
+                    entry.getKey().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
+                            + " " + entry.getKey().getYear(),
+                    slot[0], slot[1], slot[2], actual, slot[3],
+                    slot[0].subtract(actual),
+                    counts.getOrDefault(entry.getKey(), 0)
+            ));
+        }
+
+        BigDecimal changeAmount = BigDecimal.ZERO;
+        Double changePercent = null;
+        if (points.size() >= 2) {
+            BigDecimal latest = points.get(points.size() - 1).actualSpending();
+            BigDecimal previous = points.get(points.size() - 2).actualSpending();
+            changeAmount = latest.subtract(previous);
+            if (previous.compareTo(BigDecimal.ZERO) > 0) {
+                changePercent = changeAmount.multiply(BigDecimal.valueOf(100))
+                        .divide(previous, 1, RoundingMode.HALF_UP)
+                        .doubleValue();
+            }
+        }
+
+        int divisor = Math.max(points.size(), 1);
+        BigDecimal avgSpend = points.stream().map(TrendPointDto::actualSpending)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP);
+        BigDecimal avgIncome = points.stream().map(TrendPointDto::income)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(divisor), 2, RoundingMode.HALF_UP);
+
+        return new TrendResponse(from.toString(), to.toString(), "MONTHLY", points,
+                changeAmount, changePercent, avgSpend, avgIncome);
+    }
+
+    /**
+     * Resolves a period string to [from, to]. An explicit from/to pair always wins,
+     * which is what powers the custom date-range picker.
+     */
+    private LocalDate[] resolveRange(String period, LocalDate customFrom, LocalDate customTo) {
+        if (customFrom != null || customTo != null || "CUSTOM".equalsIgnoreCase(period)) {
+            if (customFrom == null || customTo == null) {
+                throw new BadRequestException(
+                        "A custom period needs both a 'from' and a 'to' date.");
+            }
+            validateCustomRange(customFrom, customTo);
+            return new LocalDate[]{ customFrom, customTo };
+        }
         LocalDate today = LocalDate.now();
         return switch (period == null ? "THIS_MONTH" : period.toUpperCase()) {
             case "7_DAYS"     -> new LocalDate[]{ today.minusDays(6), today };
@@ -135,10 +232,24 @@ public class DashboardService {
             case "3_MONTHS"   -> new LocalDate[]{ today.minusMonths(3).withDayOfMonth(1), today };
             case "6_MONTHS"   -> new LocalDate[]{ today.minusMonths(6).withDayOfMonth(1), today };
             case "1_YEAR"     -> new LocalDate[]{ today.minusYears(1).withDayOfMonth(1), today };
+            case "LAST_MONTH" -> {
+                YearMonth ym = YearMonth.from(today).minusMonths(1);
+                yield new LocalDate[]{ ym.atDay(1), ym.atEndOfMonth() };
+            }
+            case "YTD"        -> new LocalDate[]{ today.withDayOfYear(1), today };
             default           -> { // THIS_MONTH
                 YearMonth ym = YearMonth.from(today);
                 yield new LocalDate[]{ ym.atDay(1), ym.atEndOfMonth() };
             }
         };
+    }
+
+    private void validateCustomRange(LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new BadRequestException("The 'from' date must not be after the 'to' date.");
+        }
+        if (ChronoUnit.DAYS.between(from, to) > 366 * 5) {
+            throw new BadRequestException("The selected range is too large. Choose a span of 5 years or less.");
+        }
     }
 }

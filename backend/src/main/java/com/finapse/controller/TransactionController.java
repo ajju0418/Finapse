@@ -1,11 +1,14 @@
 package com.finapse.controller;
 
+import com.finapse.dto.ManualTransactionRequest;
 import com.finapse.dto.TransactionCorrectionRequest;
 import com.finapse.dto.TransactionResponse;
 import com.finapse.enums.TransactionType;
+import com.finapse.service.ManualTransactionService;
 import com.finapse.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +21,22 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final ManualTransactionService manualTransactionService;
+
+    /** Records cash or other off-statement spending. */
+    @PostMapping
+    public ResponseEntity<TransactionResponse> createManual(
+            @Valid @RequestBody ManualTransactionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(manualTransactionService.create(request));
+    }
+
+    /** Deletes a manually added transaction. Imported rows are immutable. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteManual(@PathVariable UUID id) {
+        manualTransactionService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping("/statement/{statementId}")
     public ResponseEntity<List<TransactionResponse>> getByStatement(@PathVariable UUID statementId) {

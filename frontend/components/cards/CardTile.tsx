@@ -4,11 +4,17 @@ import { useEffect, useState } from 'react'
 import type { Card, CardAnalytics } from '@/types/card'
 import { cardsApi } from '@/lib/api/cards'
 import { TransactionList } from '@/components/transactions/TransactionList'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { CreditCard, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Props {
   card: Card
+}
+
+const UTILIZATION_STYLES: Record<string, { bar: string; text: string; label: string }> = {
+  LOW:      { bar: 'bg-primary',     text: 'text-primary',     label: 'Healthy' },
+  MODERATE: { bar: 'bg-yellow-500',  text: 'text-yellow-500',  label: 'Moderate' },
+  HIGH:     { bar: 'bg-destructive', text: 'text-destructive', label: 'High — may affect your credit score' },
 }
 
 export function CardTile({ card }: Props) {
@@ -21,10 +27,10 @@ export function CardTile({ card }: Props) {
       .catch(() => {/* no transactions yet */})
   }, [card.id])
 
-  const usagePercent =
-    analytics?.availableCredit != null && card.creditLimit
-      ? Math.min(100, (analytics.outstanding / card.creditLimit) * 100)
-      : null
+  const utilization = analytics?.utilizationPercent ?? null
+  const usagePercent = utilization != null ? Math.min(100, utilization) : null
+  const band = analytics?.utilizationBand ? UTILIZATION_STYLES[analytics.utilizationBand] : null
+  const daysUntilDue = analytics?.daysUntilDue ?? null
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -59,10 +65,15 @@ export function CardTile({ card }: Props) {
             </div>
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className={`h-full rounded-full transition-all ${band?.bar ?? 'bg-primary'}`}
                 style={{ width: `${usagePercent ?? 0}%` }}
               />
             </div>
+            {utilization != null && band && (
+              <p className={`mt-1 text-xs font-medium ${band.text}`}>
+                {utilization.toFixed(0)}% utilisation · {band.label}
+              </p>
+            )}
           </div>
         )}
 
@@ -96,11 +107,36 @@ export function CardTile({ card }: Props) {
           </div>
         )}
 
-        {card.paymentDueDay && (
+        {/* Billing cycle */}
+        {analytics?.currentCycleStart && analytics.currentCycleEnd && (
+          <div className="mt-3 rounded-lg bg-muted/50 p-3 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">This cycle</span>
+              <span className="font-medium">
+                {formatDate(analytics.currentCycleStart)} → {formatDate(analytics.currentCycleEnd)}
+              </span>
+            </div>
+            <div className="mt-1 flex justify-between">
+              <span className="text-muted-foreground">Spent this cycle</span>
+              <span className="font-semibold">{formatCurrency(analytics.currentCycleSpend)}</span>
+            </div>
+          </div>
+        )}
+
+        {analytics?.nextDueDate ? (
+          <p
+            className={`mt-3 text-xs font-medium ${
+              daysUntilDue != null && daysUntilDue <= 5 ? 'text-yellow-500' : 'text-muted-foreground'
+            }`}
+          >
+            Payment due {formatDate(analytics.nextDueDate)}
+            {daysUntilDue != null && daysUntilDue >= 0 && ` · in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`}
+          </p>
+        ) : card.paymentDueDay ? (
           <p className="text-xs text-muted-foreground mt-3">
             Payment due: day {card.paymentDueDay} of each month
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Expand transactions */}

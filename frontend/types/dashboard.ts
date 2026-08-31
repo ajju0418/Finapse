@@ -2,11 +2,42 @@ import type { Transaction } from './transaction'
 
 export type DashboardPeriod =
   | 'THIS_MONTH'
+  | 'LAST_MONTH'
   | '7_DAYS'
   | '30_DAYS'
   | '3_MONTHS'
   | '6_MONTHS'
   | '1_YEAR'
+  | 'YTD'
+  | 'CUSTOM'
+
+export interface DateRange {
+  from: string
+  to: string
+}
+
+export interface TrendPoint {
+  bucket: string
+  label: string
+  income: number
+  grossExpenses: number
+  refunds: number
+  actualSpending: number
+  cashback: number
+  netCashFlow: number
+  transactionCount: number
+}
+
+export interface TrendData {
+  periodStart: string
+  periodEnd: string
+  granularity: string
+  points: TrendPoint[]
+  spendingChangeAmount: number
+  spendingChangePercent: number | null
+  averageMonthlySpend: number
+  averageMonthlyIncome: number
+}
 
 export interface CategorySpending {
   categoryName: string

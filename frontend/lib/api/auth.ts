@@ -3,6 +3,7 @@ import { clearAccessToken, setAccessToken } from '@/lib/auth/token-store'
 import type {
   AuthResponse,
   AuthUser,
+  ChangePasswordPayload,
   LoginPayload,
   RegisterPayload,
 } from '@/types/auth'
@@ -40,5 +41,15 @@ export const authApi = {
 
   me(): Promise<AuthUser> {
     return apiClient.get<AuthUser>('/auth/me')
+  },
+
+  /**
+   * Changes the password. Every other session is revoked server-side, so the
+   * fresh token returned here becomes the only valid one.
+   */
+  async changePassword(payload: ChangePasswordPayload): Promise<AuthResponse> {
+    const data = await apiClient.post<AuthResponse>('/auth/change-password', payload)
+    setAccessToken(data.accessToken, data.expiresIn)
+    return data
   },
 }

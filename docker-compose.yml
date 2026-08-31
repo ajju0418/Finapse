@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: finapse-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_DATABASE: finapse
+    ports:
+      - "3306:3306"
+    volumes:
+      - finapse-db-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: finapse-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://db:3306/finapse?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Base64, at least 32 bytes. Generate with:
+      #   openssl rand -base64 48
+      FINAPSE_JWT_SECRET: ${FINAPSE_JWT_SECRET:?set FINAPSE_JWT_SECRET in .env}
+      FINAPSE_ALLOWED_ORIGINS: ${FINAPSE_ALLOWED_ORIGINS:-http://localhost:3000}
+      FINAPSE_COOKIE_SECURE: ${FINAPSE_COOKIE_SECURE:-false}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+    container_name: finapse-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  finapse-db-data:

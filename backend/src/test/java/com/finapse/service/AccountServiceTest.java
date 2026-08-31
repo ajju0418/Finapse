@@ -82,10 +82,24 @@ class AccountServiceTest {
     @Test
     void getById_throwsWhenNotFound() {
         UUID id = UUID.randomUUID();
-        when(accountRepository.findById(id)).thenReturn(Optional.empty());
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(accountRepository.findByIdAndUserId(id, defaultUser.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> accountService.getById(id))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getById_scopesLookupToTheSignedInUser() {
+        UUID id = UUID.randomUUID();
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(accountRepository.findByIdAndUserId(id, defaultUser.getId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> accountService.getById(id))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        // A global findById would let one user read another user's account.
+        verify(accountRepository, never()).findById(id);
     }
 
     @Test
@@ -97,7 +111,9 @@ class AccountServiceTest {
         account.setCurrency("INR");
         account.setActive(true);
 
-        when(accountRepository.findById(account.getId())).thenReturn(Optional.of(account));
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
+        when(accountRepository.findByIdAndUserId(account.getId(), defaultUser.getId()))
+                .thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
 
         AccountResponse response = accountService.deactivate(account.getId());

@@ -84,9 +84,11 @@ class TransactionClassificationServiceTest {
     }
 
     @Test
-    void credit_genericCardCredit_classifiedAsUnknown() {
+    void credit_genericCardCredit_classifiedAsExpense() {
+        // Card statements export purchases as positive amounts, so an unremarkable
+        // CREDIT on a card is a purchase — not income and not unknown.
         assertThat(classify("SOME RANDOM CREDIT", TransactionDirection.CREDIT, false))
-                .isEqualTo(TransactionType.UNKNOWN);
+                .isEqualTo(TransactionType.EXPENSE);
     }
 
     @Test

@@ -20,4 +20,13 @@ export interface CardAnalytics {
   outstanding: number
   availableCredit: number | null
   transactionCount: number
+  creditLimit: number | null
+  utilizationPercent: number | null
+  utilizationBand: 'LOW' | 'MODERATE' | 'HIGH' | null
+  currentCycleStart: string | null
+  currentCycleEnd: string | null
+  currentCycleSpend: number
+  nextStatementDate: string | null
+  nextDueDate: string | null
+  daysUntilDue: number | null
 }

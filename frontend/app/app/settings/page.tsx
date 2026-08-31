@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AppShell } from '@/components/layout/AppShell'
 import { FinapseLogo } from '@/components/branding/FinapseLogo'
 import { LearnedRules } from '@/components/transactions/LearnedRules'
+import { ChangePasswordForm } from '@/components/settings/ChangePasswordForm'
+import { DataExport } from '@/components/settings/DataExport'
 
 export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -50,7 +52,7 @@ export default function SettingsPage() {
     <div className="p-8 max-w-2xl">
         <div className="mb-8">
           <h1 className="font-heading text-2xl font-bold">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your bank accounts and preferences</p>
+          <p className="text-sm text-muted-foreground mt-1">Manage your accounts, security and data</p>
         </div>
 
         {/* Bank Accounts section */}
@@ -168,6 +170,12 @@ export default function SettingsPage() {
 
         {/* What the classifier has learned */}
         <LearnedRules />
+
+        {/* Account security */}
+        <ChangePasswordForm />
+
+        {/* Data portability */}
+        <DataExport />
 
         {/* App info */}
         <section className="mt-10 pt-8 border-t border-border">

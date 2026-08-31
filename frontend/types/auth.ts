@@ -27,6 +27,11 @@ export interface RegisterPayload {
   password: string
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface ApiError {
   timestamp: string
   status: number

@@ -65,6 +65,18 @@ export interface TransactionCorrection {
   applyToSimilar?: boolean
 }
 
+/** A transaction the user enters by hand — typically cash spending. */
+export interface ManualTransactionInput {
+  transactionDate: string
+  description: string
+  amount: number
+  direction: TransactionDirection
+  transactionType: TransactionType
+  categoryId?: string | null
+  accountId?: string | null
+  cardId?: string | null
+}
+
 export interface Category {
   id: string
   name: string

@@ -2,39 +2,37 @@
 
 import { useEffect, useState } from 'react'
 import { dashboardApi } from '@/lib/api/dashboard'
-import type { DashboardData, DashboardPeriod } from '@/types/dashboard'
+import type { DashboardData, DashboardPeriod, DateRange } from '@/types/dashboard'
 import { SummaryCards } from '@/components/dashboard/SummaryCards'
 import { SpendingBreakdown } from '@/components/dashboard/SpendingBreakdown'
+import { SpendingTrend } from '@/components/dashboard/SpendingTrend'
+import { PeriodSelector } from '@/components/dashboard/PeriodSelector'
 import { TopMerchants } from '@/components/dashboard/TopMerchants'
 import { AttentionBanner } from '@/components/dashboard/AttentionBanner'
+import { AddTransactionForm } from '@/components/transactions/AddTransactionForm'
 import { ReconciliationReviewPanel } from '@/components/reconciliation/ReconciliationReviewPanel'
 import { FinancialSourceCard } from '@/components/financial/FinancialSourceCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils/format'
-
-const PERIODS: { value: DashboardPeriod; label: string }[] = [
-  { value: 'THIS_MONTH', label: 'Month' },
-  { value: '7_DAYS',     label: '7D' },
-  { value: '30_DAYS',    label: '30D' },
-  { value: '3_MONTHS',   label: '3M' },
-  { value: '6_MONTHS',   label: '6M' },
-  { value: '1_YEAR',     label: '1Y' },
-]
+import { Plus } from 'lucide-react'
 
 export default function MoneyPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('THIS_MONTH')
+  const [range, setRange]   = useState<DateRange | undefined>(undefined)
   const [data, setData]     = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]   = useState<string | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     setLoading(true)
     setError(null)
-    dashboardApi.get(period)
+    dashboardApi.get(period, range)
       .then(setData)
       .catch(() => setError('Could not reach backend.'))
       .finally(() => setLoading(false))
-  }, [period])
+  }, [period, range, reloadKey])
 
   const savingsRate = data && data.income > 0
     ? Math.round(((data.income - data.actualSpending) / data.income) * 100)
@@ -51,22 +49,34 @@ export default function MoneyPage() {
             {data ? `${data.periodStart} → ${data.periodEnd}` : 'Your money, clearly.'}
           </p>
         </div>
-        <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
-          {PERIODS.map(p => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                period === p.value
-                  ? 'bg-primary text-primary-foreground shadow'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodSelector
+          period={period}
+          range={range}
+          onChange={(nextPeriod, nextRange) => {
+            setPeriod(nextPeriod)
+            setRange(nextRange)
+          }}
+        />
       </div>
+
+      {/* Cash and other off-statement spending */}
+      {showAddForm ? (
+        <AddTransactionForm
+          onCreated={() => {
+            setShowAddForm(false)
+            setReloadKey(k => k + 1)
+          }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      ) : (
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-dashed border-border px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add a cash transaction
+        </button>
+      )}
 
       {/* ── Error ──────────────────────────────────────────── */}
       {error && (
@@ -175,6 +185,9 @@ export default function MoneyPage() {
           {data.pendingReviewCount > 0 && (
             <AttentionBanner count={data.pendingReviewCount} />
           )}
+
+          {/* Month-over-month trend */}
+          <SpendingTrend months={6} />
 
           {/* Category + Merchants */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -20,9 +20,14 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Layout-specific reader for HDFC bank PDF statements. Selected by
+ * {@link PdfStatementParser}, which falls back to a generic reader when this
+ * layout does not match.
+ */
 @Slf4j
-@Service
-public class HdfcPdfStatementParser implements StatementFileParser {
+@Component
+public class HdfcPdfStatementParser {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy");
 
@@ -35,12 +40,6 @@ public class HdfcPdfStatementParser implements StatementFileParser {
     // Note: Chq No can be empty, so we look for ValueDt, Amount, and Balance at the end.
     private static final Pattern ROW_END_PATTERN = Pattern.compile("(.*?)(\\d{2}/\\d{2}/\\d{2})\\s+([\\d,]+\\.\\d{2})\\s+([\\d,]+\\.\\d{2})$");
 
-    @Override
-    public boolean supports(String fileName) {
-        return fileName != null && fileName.toLowerCase().endsWith(".pdf");
-    }
-
-    @Override
     public StatementParseResult parse(InputStream inputStream, String fileName) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
@@ -93,8 +92,8 @@ public class HdfcPdfStatementParser implements StatementFileParser {
             determineDirections(records);
 
         } catch (Exception e) {
-            log.error("Failed to parse PDF statement {}", fileName, e);
-            throw new RuntimeException("Error parsing PDF statement: " + e.getMessage());
+            log.warn("HDFC layout did not apply to PDF {}: {}", fileName, e.getMessage());
+            return new StatementParseResult(List.of(), List.of());
         }
 
         return new StatementParseResult(records, invalidRows);

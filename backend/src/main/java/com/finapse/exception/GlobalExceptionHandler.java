@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(400, "INVALID_CSV", ex.getMessage()));
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(400, "BAD_REQUEST", ex.getMessage()));
+    }
+
     @ExceptionHandler(StatementProcessingException.class)
     public ResponseEntity<ErrorResponse> handleStatementProcessing(StatementProcessingException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)

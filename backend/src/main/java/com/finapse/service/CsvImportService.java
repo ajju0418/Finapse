@@ -1,5 +1,6 @@
 package com.finapse.service;
 
+import com.finapse.dto.ColumnMappingOverride;
 import com.finapse.dto.StatementParseResult;
 import com.finapse.dto.StatementParseResult.InvalidRowReport;
 import com.finapse.dto.RawTransactionRecord;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -73,66 +73,42 @@ public class CsvImportService implements StatementFileParser {
 
     @Override
     public StatementParseResult parse(InputStream inputStream, String fileName) {
+        return parse(inputStream, fileName, ColumnMappingOverride.NONE);
+    }
+
+    @Override
+    public List<String> readColumnNames(InputStream inputStream, String fileName) {
+        Layout layout = readLayout(inputStream, fileName);
+        return List.copyOf(layout.headerMap().keySet());
+    }
+
+    @Override
+    public ColumnMappingOverride detectMapping(InputStream inputStream, String fileName) {
+        Layout layout = readLayout(inputStream, fileName);
+        return toOverride(resolveColumns(layout.headerMap(), ColumnMappingOverride.NONE));
+    }
+
+    @Override
+    public StatementParseResult parse(InputStream inputStream, String fileName,
+                                      ColumnMappingOverride override) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
-        byte[] content;
-        try {
-            content = inputStream.readAllBytes();
-        } catch (IOException e) {
-            throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
+        Layout layout = readLayout(inputStream, fileName);
+        ColumnMapping mapping = resolveColumns(layout.headerMap(), override);
+
+        if (mapping.dateCol == null) {
+            throw new InvalidStatementFileException("Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
+        }
+        if (mapping.descriptionCol == null) {
+            throw new InvalidStatementFileException("Could not find a description column. Please ensure your CSV has a column named 'Description', 'Narration', or 'Particulars'.");
+        }
+        if (!mapping.hasAmountColumns()) {
+            throw new InvalidStatementFileException("Could not find amount columns. Please ensure your CSV has 'Debit' and 'Credit' columns, or a single 'Amount' column.");
         }
 
-        String text = new String(content, StandardCharsets.UTF_8);
-
-        // Auto-detect custom delimiter (~|~, |, \t, ;, ,)
-        char delimiter = detectDelimiter(text);
-
-        // Find best header line by scanning lines
-        String[] lines = text.split("\r?\n");
-        int headerLineIndex = findHeaderLineIndex(lines, delimiter);
-        if (headerLineIndex == -1) {
-            throw new InvalidStatementFileException(
-                    "Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
-        }
-
-        // Re-construct CSV content starting from header line
-        StringBuilder sb = new StringBuilder();
-        for (int i = headerLineIndex; i < lines.length; i++) {
-            sb.append(lines[i]).append("\n");
-        }
-
-        CSVFormat csvFormat = CSVFormat.DEFAULT
-                .builder()
-                .setDelimiter(delimiter)
-                .setHeader()
-                .setSkipHeaderRecord(true)
-                .setIgnoreHeaderCase(true)
-                .setTrim(true)
-                .setIgnoreEmptyLines(true)
-                .build();
-
-        try (InputStreamReader reader = new InputStreamReader(
-                new java.io.ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
-             CSVParser parser = csvFormat.parse(reader)) {
-
-            Map<String, Integer> headerMap = parser.getHeaderMap();
-            if (headerMap == null || headerMap.isEmpty()) {
-                throw new InvalidStatementFileException("The uploaded CSV does not contain a recognizable header row.");
-            }
-
-            ColumnMapping mapping = resolveColumns(headerMap);
-            if (mapping.dateCol == null) {
-                throw new InvalidStatementFileException("Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
-            }
-            if (mapping.descriptionCol == null) {
-                throw new InvalidStatementFileException("Could not find a description column. Please ensure your CSV has a column named 'Description', 'Narration', or 'Particulars'.");
-            }
-            if (!mapping.hasAmountColumns()) {
-                throw new InvalidStatementFileException("Could not find amount columns. Please ensure your CSV has 'Debit' and 'Credit' columns, or a single 'Amount' column.");
-            }
-
-            int rowNumber = headerLineIndex + 2;
+        try (CSVParser parser = csvFormat(layout.delimiter()).parse(new java.io.StringReader(layout.body()))) {
+            int rowNumber = layout.headerLineIndex() + 2;
             for (CSVRecord csvRecord : parser) {
                 String rawLine = csvRecord.toString();
                 try {
@@ -145,9 +121,6 @@ public class CsvImportService implements StatementFileParser {
                 }
                 rowNumber++;
             }
-
-        } catch (InvalidStatementFileException e) {
-            throw e;
         } catch (IOException e) {
             throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
         }
@@ -157,6 +130,56 @@ public class CsvImportService implements StatementFileParser {
         }
 
         return new StatementParseResult(records, invalidRows);
+    }
+
+    /** Header row, delimiter and the body text starting at the header. */
+    private record Layout(char delimiter, int headerLineIndex, String body, Map<String, Integer> headerMap) {}
+
+    private Layout readLayout(InputStream inputStream, String fileName) {
+        byte[] content;
+        try {
+            content = inputStream.readAllBytes();
+        } catch (IOException e) {
+            throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
+        }
+
+        String text = new String(content, StandardCharsets.UTF_8);
+        char delimiter = detectDelimiter(text);
+
+        String[] lines = text.split("\r?\n");
+        int headerLineIndex = findHeaderLineIndex(lines, delimiter);
+        if (headerLineIndex == -1) {
+            throw new InvalidStatementFileException(
+                    "Could not find a date column. Please ensure your CSV has a column named 'Date', 'Transaction Date', 'Txn Date', or 'Value Date'.");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = headerLineIndex; i < lines.length; i++) {
+            sb.append(lines[i]).append("\n");
+        }
+        String body = sb.toString();
+
+        try (CSVParser parser = csvFormat(delimiter).parse(new java.io.StringReader(body))) {
+            Map<String, Integer> headerMap = parser.getHeaderMap();
+            if (headerMap == null || headerMap.isEmpty()) {
+                throw new InvalidStatementFileException("The uploaded CSV does not contain a recognizable header row.");
+            }
+            return new Layout(delimiter, headerLineIndex, body, headerMap);
+        } catch (IOException e) {
+            throw new InvalidStatementFileException("Failed to read CSV file: " + fileName);
+        }
+    }
+
+    private CSVFormat csvFormat(char delimiter) {
+        return CSVFormat.DEFAULT
+                .builder()
+                .setDelimiter(delimiter)
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setIgnoreHeaderCase(true)
+                .setTrim(true)
+                .setIgnoreEmptyLines(true)
+                .build();
     }
 
     private RawTransactionRecord parseRow(CSVRecord csv, ColumnMapping mapping,
@@ -238,8 +261,22 @@ public class CsvImportService implements StatementFileParser {
     // Column resolution
     // -------------------------------------------------------------------------
 
-    private ColumnMapping resolveColumns(Map<String, Integer> headerMap) {
+    private ColumnMapping resolveColumns(Map<String, Integer> headerMap, ColumnMappingOverride override) {
         ColumnMapping m = new ColumnMapping();
+
+        // Explicit user mapping wins outright, but only for headers that exist.
+        if (override != null && !override.isEmpty()) {
+            m.dateCol = pick(headerMap, override.dateColumn());
+            m.postedDateCol = pick(headerMap, override.postedDateColumn());
+            m.descriptionCol = pick(headerMap, override.descriptionColumn());
+            m.debitCol = pick(headerMap, override.debitColumn());
+            m.creditCol = pick(headerMap, override.creditColumn());
+            m.amountCol = pick(headerMap, override.amountColumn());
+            if (m.dateCol != null && m.descriptionCol != null && m.hasAmountColumns()) {
+                return m;
+            }
+        }
+
         for (String header : headerMap.keySet()) {
             String lower = header.toLowerCase().trim();
             String canonical = HEADER_ALIASES.get(lower);
@@ -267,6 +304,21 @@ public class CsvImportService implements StatementFileParser {
         }
 
         return m;
+    }
+
+    /** Resolves a requested header name case-insensitively; null when absent. */
+    private String pick(Map<String, Integer> headerMap, String requested) {
+        if (requested == null || requested.isBlank()) return null;
+        for (String header : headerMap.keySet()) {
+            if (header.equalsIgnoreCase(requested.trim())) return header;
+        }
+        return null;
+    }
+
+    private ColumnMappingOverride toOverride(ColumnMapping m) {
+        return new ColumnMappingOverride(
+                m.dateCol, m.postedDateCol, m.descriptionCol,
+                m.debitCol, m.creditCol, m.amountCol);
     }
 
     private void assignCanonical(ColumnMapping m, String canonical, String header) {

@@ -14,6 +14,9 @@ public interface StatementRepository extends JpaRepository<Statement, UUID> {
 
     Optional<Statement> findByUserIdAndFileHash(UUID userId, String fileHash);
 
+    /** Ownership-scoped lookup; prevents reading another user's statement by id. */
+    Optional<Statement> findByIdAndUserId(UUID id, UUID userId);
+
     List<Statement> findByUserIdAndImportStatus(UUID userId, ImportStatus importStatus);
 
     boolean existsByAccountId(UUID accountId);

@@ -1,7 +1,9 @@
 package com.finapse.service;
 
 import com.finapse.classification.orchestrator.ClassificationOrchestrator;
+import com.finapse.dto.ColumnMappingOverride;
 import com.finapse.dto.StatementParseResult;
+import com.finapse.dto.StatementPreviewResponse;
 import com.finapse.dto.StatementResponse;
 import com.finapse.entity.Account;
 import com.finapse.entity.Card;
@@ -21,12 +23,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,8 +45,7 @@ public class StatementService {
     private final CardService cardService;
     private final StatementParserFactory parserFactory;
     private final ClassificationOrchestrator classificationOrchestrator;
-    private final DuplicateDetectionService duplicateDetectionService;
-    private final ReconciliationService reconciliationService;
+    private final StatementImportProcessor importProcessor;
 
     @Transactional(readOnly = true)
     public List<StatementResponse> getAll() {
@@ -71,19 +71,74 @@ public class StatementService {
     }
 
     /**
-     * Full pipeline:
-     * 1. Validate file type
-     * 2. Compute file hash — reject duplicate uploads
-     * 3. Parse CSV
-     * 4. Normalise transactions
-     * 5. Persist statement + transactions
-     * 6. Mark statement COMPLETED (or REVIEW_REQUIRED if invalid rows exist)
+     * Dry run. Parses the file in memory and reports the columns Finapse detected
+     * plus a handful of sample rows, so the user can remap columns before
+     * committing. Nothing is persisted.
+     */
+    public StatementPreviewResponse preview(MultipartFile file, ColumnMappingOverride override) {
+        validateFileType(file);
+
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new StatementProcessingException("Could not read uploaded file.");
+        }
+
+        String fileName = file.getOriginalFilename();
+        StatementFileParser parser = parserFactory.getParser(fileName);
+        ColumnMappingOverride effective = override != null ? override : ColumnMappingOverride.NONE;
+
+        List<String> columns;
+        ColumnMappingOverride detected;
+        try {
+            columns = parser.readColumnNames(new java.io.ByteArrayInputStream(fileBytes), fileName);
+            detected = parser.detectMapping(new java.io.ByteArrayInputStream(fileBytes), fileName);
+        } catch (InvalidStatementFileException e) {
+            return new StatementPreviewResponse(fileName, List.of(), ColumnMappingOverride.NONE,
+                    false, e.getMessage(), 0, 0, List.of(), List.of());
+        }
+
+        StatementParseResult result;
+        try {
+            result = parser.parse(new java.io.ByteArrayInputStream(fileBytes), fileName, effective);
+        } catch (InvalidStatementFileException e) {
+            return new StatementPreviewResponse(fileName, columns, detected,
+                    false, e.getMessage(), 0, 0, List.of(), List.of());
+        }
+
+        List<StatementPreviewResponse.PreviewRow> sample = result.records().stream()
+                .limit(10)
+                .map(r -> new StatementPreviewResponse.PreviewRow(
+                        r.sourceRowNumber(),
+                        r.transactionDate() != null ? r.transactionDate().toString() : null,
+                        r.description(),
+                        r.amount() != null ? r.amount().toPlainString() : null,
+                        r.direction() != null ? r.direction().name() : null))
+                .toList();
+
+        ColumnMappingOverride active = effective.isEmpty() ? detected : effective;
+
+        return new StatementPreviewResponse(
+                fileName, columns, active, true,
+                result.records().size() + " transaction(s) ready to import.",
+                result.records().size(),
+                result.invalidRows().size(),
+                sample,
+                result.invalidRows().stream().limit(5).toList());
+    }
+
+    /**
+     * Accepts the upload, records the statement as PROCESSING and hands the heavy
+     * parse/classify/reconcile work to a background worker. Clients poll
+     * {@code GET /api/statements/{id}} until the status leaves PROCESSING.
      */
     @Transactional
     public StatementResponse upload(MultipartFile file,
                                     StatementType statementType,
                                     UUID accountId,
-                                    UUID cardId) {
+                                    UUID cardId,
+                                    ColumnMappingOverride override) {
         validateSource(statementType, accountId, cardId);
         validateFileType(file);
 
@@ -107,7 +162,10 @@ public class StatementService {
                     "Upload a different file or check your existing statements.");
         });
 
-        // Create statement record
+        // Fail fast on an unsupported format before creating a PROCESSING row the
+        // background worker could never finish.
+        parserFactory.getParser(file.getOriginalFilename());
+
         Statement statement = new Statement();
         statement.setUser(userService.getCurrentUser());
         statement.setStatementType(statementType);
@@ -118,57 +176,17 @@ public class StatementService {
         statement.setCard(card);
         statement = statementRepository.save(statement);
 
-        // Parse File
-        StatementParseResult parseResult;
-        try {
-            StatementFileParser parser = parserFactory.getParser(file.getOriginalFilename());
-            parseResult = parser.parse(
-                    new java.io.ByteArrayInputStream(fileBytes),
-                    file.getOriginalFilename());
-        } catch (InvalidStatementFileException e) {
-            statement.setImportStatus(ImportStatus.FAILED);
-            statementRepository.save(statement);
-            throw e;
-        }
+        UUID statementId = statement.getId();
+        String fileName = file.getOriginalFilename();
 
-        if (parseResult.records().isEmpty()) {
-            statement.setImportStatus(ImportStatus.FAILED);
-            statementRepository.save(statement);
-            throw new InvalidStatementFileException(
-                    "No valid transactions could be extracted from the uploaded file.");
-        }
-
-        // Normalise, classify, resolve merchant, persist
-        List<Transaction> transactions = new ArrayList<>();
-        for (var raw : parseResult.records()) {
-            Transaction tx = classificationOrchestrator.orchestrate(raw, statement, account, card);
-            transactions.add(tx);
-        }
-        transactionRepository.saveAll(transactions);
-
-        // Duplicate detection + reconciliation (post-persist so IDs exist)
-        duplicateDetectionService.detectDuplicates(transactions);
-        reconciliationService.reconcile(transactions, userService.getCurrentUserId());
-
-        // Compute period range
-        LocalDate periodStart = transactions.stream()
-                .map(Transaction::getTransactionDate)
-                .min(LocalDate::compareTo).orElse(null);
-        LocalDate periodEnd = transactions.stream()
-                .map(Transaction::getTransactionDate)
-                .max(LocalDate::compareTo).orElse(null);
-
-        // Finalise statement
-        boolean hasInvalidRows = !parseResult.invalidRows().isEmpty();
-        statement.setTransactionCount(transactions.size());
-        statement.setPeriodStart(periodStart);
-        statement.setPeriodEnd(periodEnd);
-        statement.setImportStatus(hasInvalidRows ? ImportStatus.REVIEW_REQUIRED : ImportStatus.COMPLETED);
-        statement.setProcessedAt(LocalDateTime.now());
-        statement = statementRepository.save(statement);
-
-        log.info("Statement {} processed: {} transactions, {} invalid rows",
-                statement.getId(), transactions.size(), parseResult.invalidRows().size());
+        // Dispatch only once this transaction has committed, otherwise the worker
+        // can start before the statement row is visible to it.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                importProcessor.processAsync(statementId, fileBytes, fileName, override, userId);
+            }
+        });
 
         return StatementResponse.from(statement);
     }
@@ -220,7 +238,7 @@ public class StatementService {
     }
 
     public Statement findOrThrow(UUID id) {
-        return statementRepository.findById(id)
+        return statementRepository.findByIdAndUserId(id, userService.getCurrentUserId())
                 .orElseThrow(() -> new com.finapse.exception.ResourceNotFoundException(
                         "Statement not found: " + id));
     }

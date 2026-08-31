@@ -76,10 +76,11 @@ public class AccountService {
 
     @Transactional
     public void delete(UUID id) {
+        Account account = findOrThrow(id);
         if (statementRepository.existsByAccountId(id)) {
             throw new ConflictException("Cannot delete account because it has linked statements. Delete the statements first, or deactivate the account.");
         }
-        accountRepository.deleteById(id);
+        accountRepository.delete(account);
     }
 
     @Transactional(readOnly = true)
@@ -107,7 +108,7 @@ public class AccountService {
 
     // Package-visible for use by StatementService in Phase 4
     public Account findOrThrow(UUID id) {
-        return accountRepository.findById(id)
+        return accountRepository.findByIdAndUserId(id, userService.getCurrentUserId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Account not found: " + id));
     }

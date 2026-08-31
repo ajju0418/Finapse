@@ -1,6 +1,7 @@
 package com.finapse.service;
 
 import com.finapse.dto.AuthResponse;
+import com.finapse.dto.ChangePasswordRequest;
 import com.finapse.dto.LoginRequest;
 import com.finapse.dto.RegisterRequest;
 import com.finapse.dto.UserResponse;
@@ -119,6 +120,30 @@ public class AuthService {
         if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
             refreshTokenService.revoke(rawRefreshToken);
         }
+    }
+
+    /**
+     * Changes the signed-in user's password and revokes every refresh token they
+     * hold, so any other session — including a stolen one — is signed out. The
+     * caller is re-issued a fresh session.
+     */
+    @Transactional
+    public AuthResult changePassword(User user, ChangePasswordRequest request, String userAgent) {
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Your current password is incorrect.");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new ConflictException("Choose a password you have not used before.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        User saved = userRepository.save(user);
+
+        refreshTokenService.revokeAllForUser(saved.getId());
+        log.info("Password changed for account {}; all sessions revoked", saved.getId());
+
+        return buildResult(saved, userAgent);
     }
 
     private AuthResult buildResult(User user, String userAgent) {

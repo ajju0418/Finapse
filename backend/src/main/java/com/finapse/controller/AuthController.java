@@ -2,6 +2,7 @@ package com.finapse.controller;
 
 import com.finapse.config.AuthProperties;
 import com.finapse.dto.AuthResponse;
+import com.finapse.dto.ChangePasswordRequest;
 import com.finapse.dto.LoginRequest;
 import com.finapse.dto.RegisterRequest;
 import com.finapse.dto.UserResponse;
@@ -73,6 +74,20 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
         return ResponseEntity.ok(UserResponse.from(userService.getCurrentUser()));
+    }
+
+    /**
+     * Changes the password and rotates the session. Every other refresh token for
+     * this account is revoked, so other devices must sign in again.
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<AuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                                       HttpServletRequest httpRequest) {
+        AuthService.AuthResult result = authService.changePassword(
+                userService.getCurrentUser(), request, userAgent(httpRequest));
+        return ResponseEntity.ok()
+                .headers(refreshCookieHeader(result.refreshToken()))
+                .body(result.body());
     }
 
     private HttpHeaders refreshCookieHeader(String rawToken) {

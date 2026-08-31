@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   Category,
   LearnedRule,
+  ManualTransactionInput,
   Transaction,
   TransactionCorrection,
 } from '@/types/transaction'
@@ -15,6 +16,13 @@ export const transactionsApi = {
     apiClient.get<Transaction[]>(`/transactions/account/${accountId}`),
   getById: (id: string) =>
     apiClient.get<Transaction>(`/transactions/${id}`),
+
+  /** Records cash or other off-statement spending. */
+  createManual: (input: ManualTransactionInput) =>
+    apiClient.post<Transaction>('/transactions', input),
+
+  /** Only manually added transactions can be removed. */
+  deleteManual: (id: string) => apiClient.delete(`/transactions/${id}`),
 
   /** Correct a classification and optionally teach the engine from it. */
   correct: (id: string, correction: TransactionCorrection) =>

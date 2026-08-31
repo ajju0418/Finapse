@@ -1,10 +1,13 @@
 package com.finapse.controller;
 
+import com.finapse.dto.ColumnMappingOverride;
+import com.finapse.dto.StatementPreviewResponse;
 import com.finapse.dto.StatementResponse;
 import com.finapse.enums.StatementType;
 import com.finapse.service.StatementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,15 +37,31 @@ public class StatementController {
         return ResponseEntity.ok(statementService.reclassify(id));
     }
 
-    @PostMapping("/upload")
+    /**
+     * Dry-run parse. Returns the detected column mapping and sample rows so the
+     * user can confirm or remap columns before importing. Nothing is saved.
+     */
+    @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<StatementPreviewResponse> preview(
+            @RequestParam("file") MultipartFile file,
+            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping) {
+        return ResponseEntity.ok(statementService.preview(file, columnMapping));
+    }
+
+    /**
+     * Queues the import. Responds 202 with the statement in PROCESSING; poll
+     * {@code GET /api/statements/{id}} until the status changes.
+     */
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StatementResponse> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("statementType") StatementType statementType,
             @RequestParam(value = "accountId", required = false) UUID accountId,
-            @RequestParam(value = "cardId",    required = false) UUID cardId) {
+            @RequestParam(value = "cardId",    required = false) UUID cardId,
+            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(statementService.upload(file, statementType, accountId, cardId));
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(statementService.upload(file, statementType, accountId, cardId, columnMapping));
     }
 
     @DeleteMapping("/{id}")

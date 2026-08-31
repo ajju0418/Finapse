@@ -1,5 +1,6 @@
 package com.finapse.service;
 
+import com.finapse.dto.ColumnMappingOverride;
 import com.finapse.dto.RawTransactionRecord;
 import com.finapse.dto.StatementParseResult;
 import com.finapse.dto.StatementParseResult.InvalidRowReport;
@@ -64,6 +65,51 @@ public class ExcelImportService implements StatementFileParser {
 
     @Override
     public StatementParseResult parse(InputStream inputStream, String fileName) {
+        return parse(inputStream, fileName, ColumnMappingOverride.NONE);
+    }
+
+    @Override
+    public List<String> readColumnNames(InputStream inputStream, String fileName) {
+        return List.copyOf(readHeaders(inputStream, fileName).keySet());
+    }
+
+    @Override
+    public ColumnMappingOverride detectMapping(InputStream inputStream, String fileName) {
+        ColumnMapping m = resolveColumns(readHeaders(inputStream, fileName), ColumnMappingOverride.NONE);
+        return new ColumnMappingOverride(m.dateCol, m.postedDateCol, m.descriptionCol,
+                m.debitCol, m.creditCol, m.amountCol);
+    }
+
+    private Map<String, Integer> readHeaders(InputStream inputStream, String fileName) {
+        try (Workbook workbook = WorkbookFactory.create(inputStream)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int headerRowIndex = findHeaderRowIndex(sheet);
+            if (headerRowIndex == -1) {
+                throw new InvalidStatementFileException(
+                        "Could not find a header row with Date and Amount/Debit/Credit columns.");
+            }
+            return headerMapOf(sheet.getRow(headerRowIndex));
+        } catch (InvalidStatementFileException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InvalidStatementFileException("Failed to read Excel file: " + fileName);
+        }
+    }
+
+    private Map<String, Integer> headerMapOf(Row headerRow) {
+        Map<String, Integer> headerMap = new LinkedHashMap<>();
+        for (Cell cell : headerRow) {
+            String header = getCellValueAsString(cell).trim();
+            if (!header.isEmpty()) {
+                headerMap.put(header, cell.getColumnIndex());
+            }
+        }
+        return headerMap;
+    }
+
+    @Override
+    public StatementParseResult parse(InputStream inputStream, String fileName,
+                                      ColumnMappingOverride override) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
@@ -75,16 +121,9 @@ public class ExcelImportService implements StatementFileParser {
                 throw new InvalidStatementFileException("Could not find a header row with Date and Amount/Debit/Credit columns.");
             }
 
-            Row headerRow = sheet.getRow(headerRowIndex);
-            Map<String, Integer> headerMap = new HashMap<>();
-            for (Cell cell : headerRow) {
-                String header = getCellValueAsString(cell).trim();
-                if (!header.isEmpty()) {
-                    headerMap.put(header, cell.getColumnIndex());
-                }
-            }
+            Map<String, Integer> headerMap = headerMapOf(sheet.getRow(headerRowIndex));
 
-            ColumnMapping mapping = resolveColumns(headerMap);
+            ColumnMapping mapping = resolveColumns(headerMap, override);
             if (mapping.dateCol == null) {
                 throw new InvalidStatementFileException("Could not find a date column.");
             }
@@ -242,8 +281,22 @@ public class ExcelImportService implements StatementFileParser {
 
     // --- Reuse resolution and parsing logic ---
 
-    private ColumnMapping resolveColumns(Map<String, Integer> headerMap) {
+    private ColumnMapping resolveColumns(Map<String, Integer> headerMap, ColumnMappingOverride override) {
         ColumnMapping m = new ColumnMapping();
+
+        // Explicit user mapping wins outright, but only for headers that exist.
+        if (override != null && !override.isEmpty()) {
+            m.dateCol = pick(headerMap, override.dateColumn());
+            m.postedDateCol = pick(headerMap, override.postedDateColumn());
+            m.descriptionCol = pick(headerMap, override.descriptionColumn());
+            m.debitCol = pick(headerMap, override.debitColumn());
+            m.creditCol = pick(headerMap, override.creditColumn());
+            m.amountCol = pick(headerMap, override.amountColumn());
+            if (m.dateCol != null && m.descriptionCol != null && m.hasAmountColumns()) {
+                return m;
+            }
+        }
+
         for (String header : headerMap.keySet()) {
             String lower = header.toLowerCase().trim();
             String canonical = HEADER_ALIASES.get(lower);
@@ -260,6 +313,15 @@ public class ExcelImportService implements StatementFileParser {
             }
         }
         return m;
+    }
+
+    /** Resolves a requested header name case-insensitively; null when absent. */
+    private String pick(Map<String, Integer> headerMap, String requested) {
+        if (requested == null || requested.isBlank()) return null;
+        for (String header : headerMap.keySet()) {
+            if (header.equalsIgnoreCase(requested.trim())) return header;
+        }
+        return null;
     }
 
     private void assignCanonical(ColumnMapping m, String canonical, String header) {

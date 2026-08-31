@@ -63,6 +63,10 @@ public class Statement {
     @Column(name = "period_end")
     private LocalDate periodEnd;
 
+    /** Why the import failed; null for successful imports. */
+    @Column(name = "import_error", length = 500)
+    private String importError;
+
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;
 

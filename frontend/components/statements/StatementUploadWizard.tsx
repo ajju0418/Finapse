@@ -1,21 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { accountsApi } from '@/lib/api/accounts'
 import { cardsApi } from '@/lib/api/cards'
 import { statementsApi } from '@/lib/api/statements'
 import type { Account } from '@/types/account'
 import type { Card } from '@/types/card'
-import type { Statement, StatementType } from '@/types/statement'
+import type { ColumnMapping, Statement, StatementPreview, StatementType } from '@/types/statement'
 import { FileDropzone } from './FileDropzone'
-import { X, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { ColumnMappingStep } from './ColumnMappingStep'
+import { X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 
 interface Props {
   onImported: (statement: Statement) => void
   onCancel: () => void
 }
 
-type Step = 'type' | 'source' | 'upload' | 'done'
+type Step = 'type' | 'source' | 'upload' | 'preview' | 'importing' | 'done'
+
+/** Imports run in the background; poll until the status settles. */
+const POLL_INTERVAL_MS = 1500
+const POLL_TIMEOUT_MS = 120_000
 
 export function StatementUploadWizard({ onImported, onCancel }: Props) {
   const [step, setStep] = useState<Step>('type')
@@ -28,8 +33,18 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
   const [uploading, setUploading] = useState(false)
   const [loadingSource, setLoadingSource] = useState(true)
   const [sourceError, setSourceError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<StatementPreview | null>(null)
   const [result, setResult] = useState<Statement | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Cleared on unmount so polling never touches an unmounted component.
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollTimer.current) clearTimeout(pollTimer.current)
+    }
+  }, [])
 
   useEffect(() => {
     setLoadingSource(true)
@@ -53,7 +68,62 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
     setStep('upload')
   }
 
-  async function handleUpload() {
+  function appendMapping(form: FormData, mapping: ColumnMapping | null) {
+    if (!mapping) return
+    form.append(
+      'columnMapping',
+      new Blob([JSON.stringify(mapping)], { type: 'application/json' })
+    )
+  }
+
+  /** Dry run so the user can confirm columns before anything is written. */
+  async function runPreview(mapping: ColumnMapping | null) {
+    if (!file) return
+    setError(null)
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      appendMapping(form, mapping)
+
+      const result = await statementsApi.preview(form)
+      setPreview(result)
+      setStep('preview')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read that file. Please try another.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /** Waits for the background import to finish, then surfaces the outcome. */
+  function pollUntilSettled(statementId: string, deadline: number) {
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const statement = await statementsApi.getById(statementId)
+
+        if (statement.importStatus !== 'PROCESSING' && statement.importStatus !== 'UPLOADED') {
+          setResult(statement)
+          setStep('done')
+          onImported(statement)
+          return
+        }
+
+        if (Date.now() > deadline) {
+          setResult(statement)
+          setStep('done')
+          onImported(statement)
+          return
+        }
+        pollUntilSettled(statementId, deadline)
+      } catch {
+        setError('Lost contact with the server while importing. Check the Statements list.')
+        setStep('upload')
+      }
+    }, POLL_INTERVAL_MS)
+  }
+
+  async function handleUpload(mapping: ColumnMapping | null) {
     if (!file || !statementType) return
     setError(null)
     setUploading(true)
@@ -63,11 +133,12 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
       form.append('statementType', statementType)
       if (statementType === 'BANK') form.append('accountId', selectedAccountId)
       if (statementType === 'CREDIT_CARD') form.append('cardId', selectedCardId)
+      appendMapping(form, mapping)
 
       const statement = await statementsApi.upload(form)
       setResult(statement)
-      setStep('done')
-      onImported(statement)
+      setStep('importing')
+      pollUntilSettled(statement.id, Date.now() + POLL_TIMEOUT_MS)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.')
     } finally {
@@ -82,7 +153,7 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
         <div>
           <h2 className="text-lg font-semibold">Upload Statement</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Step {step === 'type' ? 1 : step === 'source' ? 2 : step === 'upload' ? 3 : 4} of 3
+            Step {step === 'type' ? 1 : step === 'source' ? 2 : step === 'upload' ? 3 : 4} of 4
           </p>
         </div>
         <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">
@@ -214,22 +285,51 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
               Back
             </button>
             <button
-              onClick={handleUpload}
+              onClick={() => runPreview(null)}
               disabled={!file || uploading}
               className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              {uploading ? 'Importing…' : 'Import Statement'}
+              {uploading ? 'Reading…' : 'Preview'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 4 — Done */}
+      {/* Step 4 — Confirm columns and sample rows */}
+      {step === 'preview' && preview && (
+        <ColumnMappingStep
+          preview={preview}
+          busy={uploading}
+          onRemap={(mapping) => runPreview(mapping)}
+          onConfirm={(mapping) => handleUpload(mapping)}
+          onBack={() => setStep('upload')}
+        />
+      )}
+
+      {/* Step 5 — Background import in progress */}
+      {step === 'importing' && (
+        <div className="space-y-3 py-8 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium">Importing your statement…</p>
+          <p className="text-xs text-muted-foreground">
+            Classifying transactions and checking for duplicates. This keeps running even if you
+            close this window.
+          </p>
+        </div>
+      )}
+
+      {/* Step 6 — Done */}
       {step === 'done' && result && (
         <div className="space-y-4 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+          {result.importStatus === 'FAILED' ? (
+            <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+          ) : (
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+          )}
           <div>
-            <p className="font-semibold">Statement imported</p>
+            <p className="font-semibold">
+              {result.importStatus === 'FAILED' ? 'Import failed' : 'Statement imported'}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">{result.originalFileName}</p>
           </div>
           <div className="rounded-lg border border-border bg-muted/30 p-4 text-left space-y-2 text-sm">
@@ -245,10 +345,25 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
-              <span className={`font-medium ${result.importStatus === 'REVIEW_REQUIRED' ? 'text-yellow-600' : 'text-green-600'}`}>
-                {result.importStatus === 'REVIEW_REQUIRED' ? 'Review Required' : 'Completed'}
+              <span className={`font-medium ${
+                result.importStatus === 'FAILED'
+                  ? 'text-destructive'
+                  : result.importStatus === 'REVIEW_REQUIRED'
+                    ? 'text-yellow-600'
+                    : 'text-green-600'
+              }`}>
+                {result.importStatus === 'FAILED'
+                  ? 'Failed'
+                  : result.importStatus === 'REVIEW_REQUIRED'
+                    ? 'Review Required'
+                    : result.importStatus === 'PROCESSING'
+                      ? 'Still processing'
+                      : 'Completed'}
               </span>
             </div>
+            {result.importError && (
+              <p className="pt-1 text-xs text-muted-foreground">{result.importError}</p>
+            )}
           </div>
           <button
             onClick={onCancel}
