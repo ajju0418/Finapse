@@ -23,15 +23,19 @@ export function AuthSubmitButton({
     <motion.button
       type="submit"
       disabled={inert}
-      whileHover={inert ? undefined : { y: -2 }}
-      whileTap={inert ? undefined : { y: 0, scale: 0.99 }}
+      whileHover={inert ? undefined : { y: -1 }}
+      whileTap={inert ? undefined : { y: 0, scale: 0.995 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
       className={cn(
-        'group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl',
-        'bg-primary text-sm font-bold text-primary-foreground',
-        'shadow-lg shadow-primary/25 transition-shadow',
-        'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/50',
-        inert ? 'cursor-not-allowed opacity-60' : 'hover:shadow-xl hover:shadow-primary/35',
+        'premium-edge group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl',
+        'text-[0.9rem] font-semibold tracking-wide text-white',
+        'bg-gradient-to-b from-[oklch(0.66_0.19_295)] to-[oklch(0.54_0.19_295)]',
+        'border border-[oklch(0.72_0.16_295)]/40',
+        'transition-shadow duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--violet)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ink)]',
+        inert
+          ? 'cursor-not-allowed opacity-55'
+          : 'shadow-[0_8px_24px_-10px_oklch(0.64_0.19_295_/_70%)] hover:shadow-[0_12px_32px_-10px_oklch(0.64_0.19_295_/_85%)]',
         loading && 'auth-shimmer'
       )}
     >

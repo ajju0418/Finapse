@@ -8,15 +8,22 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen bg-[oklch(0.11_0.03_300)] lg:grid-cols-[1.05fr_1fr]">
+    <div className="auth-surface grid min-h-screen bg-[var(--ink)] lg:grid-cols-[1.05fr_1fr]">
       <AuthShowcase />
-      <main className="relative flex items-center justify-center overflow-hidden px-6 py-12 sm:px-10">
+
+      {/*
+        min-h-screen + overflow-y-auto rather than a fixed height: on short
+        laptop viewports the form can exceed the fold, and clipping it would
+        hide the submit button. It scrolls instead.
+      */}
+      <main className="relative flex min-h-screen items-center justify-center overflow-y-auto px-6 py-14 sm:px-10">
         {/* Ambient wash so the form side is not flat next to the showcase. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
-          <div className="absolute -bottom-40 right-0 h-80 w-80 rounded-full bg-primary/5 blur-[110px]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-[var(--violet)]/10 blur-[130px]" />
+          <div className="absolute -bottom-40 right-0 h-80 w-80 rounded-full bg-[var(--violet)]/[0.06] blur-[110px]" />
         </div>
-        <div className="relative z-10 w-full max-w-[26rem]">{children}</div>
+
+        <div className="relative z-10 w-full max-w-[25rem] py-2">{children}</div>
       </main>
     </div>
   )

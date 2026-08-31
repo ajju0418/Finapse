@@ -20,9 +20,11 @@ export function AuthAlert({ message }: { message: string | null }) {
           }}
           className="overflow-hidden"
         >
-          <div className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 backdrop-blur-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="text-xs font-medium leading-relaxed text-destructive">{message}</p>
+          <div className="flex items-start gap-2.5 rounded-xl border border-[oklch(0.55_0.19_25)]/45 bg-[oklch(0.55_0.19_25)]/[0.12] px-4 py-3 backdrop-blur-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.72_0.19_25)]" />
+            <p className="text-[0.78rem] font-medium leading-relaxed text-[oklch(0.80_0.14_25)]">
+              {message}
+            </p>
           </div>
         </motion.div>
       )}

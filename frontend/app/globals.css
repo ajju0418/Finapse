@@ -145,6 +145,45 @@
   }
 
   /* ---------------------------------------------------------------
+     Premium auth palette
+     A deep obsidian base with a violet cast, refined violet primary,
+     and a champagne accent reserved for premium highlights. Scoped as
+     plain custom properties so the rest of the app theme is untouched.
+     --------------------------------------------------------------- */
+  .auth-surface {
+    --ink:        oklch(0.085 0.020 292);
+    --ink-raised: oklch(0.125 0.026 292);
+    --ink-field:  oklch(0.155 0.030 292);
+    --line:       oklch(0.30 0.030 292);
+    --line-soft:  oklch(0.24 0.026 292);
+    --violet:     oklch(0.64 0.190 295);
+    --violet-dim: oklch(0.50 0.150 295);
+    --gold:       oklch(0.84 0.100 88);
+    --ink-text:   oklch(0.97 0.005 292);
+    --ink-dim:    oklch(0.70 0.020 292);
+    --ink-faint:  oklch(0.55 0.020 292);
+  }
+
+  /* Hairline top highlight — the classic "lit from above" premium edge. */
+  .premium-edge {
+    position: relative;
+  }
+  .premium-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(1 0 0 / 14%) 20%,
+      oklch(1 0 0 / 14%) 80%,
+      transparent
+    );
+    pointer-events: none;
+  }
+
+  /* ---------------------------------------------------------------
      Auth cinematics
      A layered set of slow, ambient effects used behind sign-in and
      sign-up. Everything here is decorative and pointer-events-none.

@@ -1,85 +1,88 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Minus } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import { assessPassword } from '@/lib/auth/password'
 import { cn } from '@/lib/utils'
 
 const SEGMENT_TONES = [
-  'bg-destructive',
-  'bg-destructive',
-  'bg-amber-500',
-  'bg-primary',
-  'bg-primary',
+  'bg-[oklch(0.60_0.19_25)]',
+  'bg-[oklch(0.60_0.19_25)]',
+  'bg-[oklch(0.75_0.15_75)]',
+  'bg-[var(--violet)]',
+  'bg-[var(--violet)]',
 ]
 
+/**
+ * Compact strength meter.
+ *
+ * Height is reserved rather than animated. An expanding panel here would push
+ * the confirm-password field down on every keystroke, which is jarring while
+ * typing — the meter now occupies the same space whether or not it has content.
+ */
 export function PasswordStrength({ password }: { password: string }) {
   const { rules, score, label } = assessPassword(password)
-  const visible = password.length > 0
+  const active = password.length > 0
 
   return (
-    <AnimatePresence initial={false}>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-          className="overflow-hidden"
+    <div className="min-h-[3.25rem] pt-0.5">
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 gap-1.5">
+          {[0, 1, 2, 3].map((segment) => (
+            <span
+              key={segment}
+              className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/[0.08]"
+            >
+              <motion.span
+                className={cn('block h-full rounded-full', SEGMENT_TONES[score])}
+                initial={false}
+                animate={{ scaleX: active && segment < score ? 1 : 0 }}
+                style={{ originX: 0 }}
+                transition={{ duration: 0.28, delay: segment * 0.04 }}
+              />
+            </span>
+          ))}
+        </div>
+        <span
+          className={cn(
+            'w-[4.5rem] text-right text-[0.68rem] font-semibold transition-colors',
+            !active
+              ? 'text-transparent'
+              : score >= 3
+                ? 'text-[var(--violet)]'
+                : score === 2
+                  ? 'text-[oklch(0.75_0.15_75)]'
+                  : 'text-[oklch(0.70_0.19_25)]'
+          )}
         >
-          <div className="flex flex-col gap-2.5 pt-1">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-1 gap-1.5">
-                {[0, 1, 2, 3].map((segment) => (
-                  <span key={segment} className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
-                    <motion.span
-                      className={cn('block h-full rounded-full', SEGMENT_TONES[score])}
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: segment < score ? 1 : 0 }}
-                      style={{ originX: 0 }}
-                      transition={{ duration: 0.3, delay: segment * 0.05 }}
-                    />
-                  </span>
-                ))}
-              </div>
-              <span
-                className={cn(
-                  'w-20 text-right text-[0.7rem] font-semibold',
-                  score >= 3 ? 'text-primary' : score === 2 ? 'text-amber-500' : 'text-destructive'
-                )}
-              >
-                {label}
-              </span>
-            </div>
+          {label || '—'}
+        </span>
+      </div>
 
-            <ul className="flex flex-col gap-1">
-              {rules.map((rule) => (
-                <li
-                  key={rule.id}
-                  className={cn(
-                    'flex items-center gap-2 text-[0.7rem] transition-colors',
-                    rule.satisfied ? 'text-primary' : 'text-white/40'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'flex h-3.5 w-3.5 items-center justify-center rounded-full border transition-colors',
-                      rule.satisfied ? 'border-primary bg-primary/20' : 'border-white/20'
-                    )}
-                  >
-                    {rule.satisfied ? (
-                      <Check className="h-2.5 w-2.5" />
-                    ) : (
-                      <Minus className="h-2.5 w-2.5" />
-                    )}
-                  </span>
-                  {rule.label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* Rules sit on one wrapped row to keep the block short. */}
+      <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {rules.map((rule) => (
+          <li
+            key={rule.id}
+            className={cn(
+              'flex items-center gap-1 text-[0.66rem] transition-colors',
+              rule.satisfied ? 'text-[var(--violet)]' : 'text-[var(--ink-faint)]'
+            )}
+          >
+            <span
+              className={cn(
+                'flex h-3 w-3 items-center justify-center rounded-full border transition-colors',
+                rule.satisfied
+                  ? 'border-[var(--violet)] bg-[var(--violet)]/20'
+                  : 'border-[var(--line)]'
+              )}
+            >
+              {rule.satisfied && <Check className="h-2 w-2" />}
+            </span>
+            {rule.label}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

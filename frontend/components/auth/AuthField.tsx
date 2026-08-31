@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useId, useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,11 +13,15 @@ interface AuthFieldProps
 }
 
 /**
- * Floating-label input with a focus glow.
+ * Premium text field for the auth screens.
  *
- * The label sits inside the field until it is focused or filled, then lifts into
- * the border. Errors are wired up with aria-invalid/aria-describedby so screen
- * readers announce them.
+ * The label sits *above* the input rather than floating inside it. A floating
+ * label has to share one box with the icon and the value, which is what made the
+ * earlier version feel cramped and let text collide at small field heights.
+ * Keeping the label outside gives the value a full-height row of its own.
+ *
+ * The error line occupies reserved space, so validation appearing or clearing
+ * never pushes the rest of the form around.
  */
 export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
   ({ label, error, icon, className, type = 'text', value, ...props }, ref) => {
@@ -28,50 +32,51 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
 
     const isPassword = type === 'password'
     const resolvedType = isPassword && revealed ? 'text' : type
-    const filled = value !== undefined && String(value).length > 0
-    const lifted = focused || filled
+    const invalid = Boolean(error)
 
     return (
-      <div className="flex flex-col gap-1.5">
-        <div
+      <div className="flex flex-col">
+        <label
+          htmlFor={id}
           className={cn(
-            'group relative rounded-xl border bg-white/[0.03] transition-colors duration-200',
-            error
-              ? 'border-destructive/60'
+            'mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] transition-colors duration-200',
+            invalid
+              ? 'text-[oklch(0.70_0.19_25)]'
               : focused
-                ? 'border-primary/70'
-                : 'border-white/10 hover:border-white/20'
+                ? 'text-[var(--violet)]'
+                : 'text-[var(--ink-faint)]'
           )}
         >
-          {/* Focus halo */}
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute -inset-px rounded-xl"
-            animate={{
-              boxShadow: focused
-                ? '0 0 0 3px oklch(0.60 0.15 300 / 18%), 0 0 24px oklch(0.60 0.15 300 / 22%)'
-                : '0 0 0 0px oklch(0.60 0.15 300 / 0%), 0 0 0px oklch(0.60 0.15 300 / 0%)',
-            }}
-            transition={{ duration: 0.22 }}
-          />
+          {label}
+        </label>
 
-          <label
-            htmlFor={id}
-            className={cn(
-              'pointer-events-none absolute left-11 origin-left text-white/45 transition-all duration-200',
-              lifted
-                ? 'top-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-primary/80'
-                : 'top-1/2 -translate-y-1/2 text-sm'
-            )}
-          >
-            {label}
-          </label>
-
+        <div
+          className={cn(
+            'premium-edge relative h-12 rounded-xl border bg-[var(--ink-field)] transition-all duration-200',
+            invalid
+              ? 'border-[oklch(0.55_0.19_25)]'
+              : focused
+                ? 'border-[var(--violet)]'
+                : 'border-[var(--line-soft)] hover:border-[var(--line)]'
+          )}
+          style={{
+            boxShadow: invalid
+              ? '0 0 0 3px oklch(0.55 0.19 25 / 12%)'
+              : focused
+                ? '0 0 0 3px oklch(0.64 0.19 295 / 15%), 0 8px 24px -12px oklch(0.64 0.19 295 / 45%)'
+                : '0 1px 2px oklch(0 0 0 / 30%)',
+          }}
+        >
           {icon && (
             <span
               className={cn(
-                'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transition-colors [&_svg]:h-4 [&_svg]:w-4',
-                focused ? 'text-primary' : 'text-white/35'
+                'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-200',
+                "[&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]",
+                invalid
+                  ? 'text-[oklch(0.60_0.19_25)]'
+                  : focused
+                    ? 'text-[var(--violet)]'
+                    : 'text-[var(--ink-faint)]'
               )}
             >
               {icon}
@@ -84,7 +89,7 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
             id={id}
             type={resolvedType}
             value={value}
-            aria-invalid={Boolean(error)}
+            aria-invalid={invalid}
             aria-describedby={error ? errorId : undefined}
             onFocus={(e) => {
               setFocused(true)
@@ -95,8 +100,11 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
               props.onBlur?.(e)
             }}
             className={cn(
-              'peer relative w-full bg-transparent pb-2 pl-11 pt-6 text-sm text-white outline-none',
-              'placeholder:text-transparent disabled:cursor-not-allowed disabled:opacity-50',
+              // h-full keeps the value on a single centred row — no vertical crowding.
+              'h-full w-full rounded-xl bg-transparent text-[0.9rem] font-medium outline-none',
+              'text-[var(--ink-text)] placeholder:text-[oklch(0.42_0.02_292)]',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              icon ? 'pl-11' : 'pl-4',
               isPassword ? 'pr-12' : 'pr-4',
               className
             )}
@@ -108,24 +116,32 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(
               onClick={() => setRevealed((r) => !r)}
               tabIndex={-1}
               aria-label={revealed ? 'Hide password' : 'Show password'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-white/35 transition-colors hover:text-white/70"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[var(--ink-faint)] transition-colors hover:bg-white/5 hover:text-[var(--ink-dim)]"
             >
               {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           )}
         </div>
 
-        {error && (
-          <motion.p
-            id={errorId}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-1.5 pl-1 text-xs font-medium text-destructive"
-          >
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {error}
-          </motion.p>
-        )}
+        {/* Reserved height so validation never reflows the form. */}
+        <div className="min-h-[1.375rem] overflow-hidden pt-1.5">
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.p
+                key={error}
+                id={errorId}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-1.5 text-[0.7rem] font-medium text-[oklch(0.70_0.19_25)]"
+              >
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     )
   }
