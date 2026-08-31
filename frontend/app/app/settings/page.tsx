@@ -6,6 +6,7 @@ import type { Account } from '@/types/account'
 import { Building2, Plus, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppShell } from '@/components/layout/AppShell'
+import { FinapseLogo } from '@/components/branding/FinapseLogo'
 
 export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -47,7 +48,7 @@ export default function SettingsPage() {
   return (
     <div className="p-8 max-w-2xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">Settings</h1>
+          <h1 className="font-heading text-2xl font-bold">Settings</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your bank accounts and preferences</p>
         </div>
 
@@ -168,7 +169,11 @@ export default function SettingsPage() {
         <section className="mt-10 pt-8 border-t border-border">
           <h2 className="text-base font-semibold mb-4">About</h2>
           <div className="rounded-xl border border-border bg-card p-5 space-y-2 text-sm text-muted-foreground">
-            <p><span className="font-medium text-foreground">Finapse</span> — Privacy-first personal finance intelligence</p>
+            <div className="flex items-center gap-2">
+              <FinapseLogo size={20} showText={false} />
+              <span className="font-heading font-semibold text-foreground">Finapse</span>
+              <span className="text-muted-foreground">— Privacy-first personal finance intelligence</span>
+            </div>
             <p>All data is stored locally in your MySQL database. Nothing leaves your laptop.</p>
             <p className="text-xs">Backend: <code className="bg-muted px-1 rounded">http://localhost:8080</code></p>
           </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { FinapseLogo } from '@/components/branding/FinapseLogo'
 
 export default function LandingPage() {
   return (
@@ -16,7 +17,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="fixed top-4 inset-x-0 z-50 flex justify-center px-4">
         <nav className="flex items-center justify-between w-full max-w-6xl glass-card rounded-full px-6 py-3">
-          <span className="text-xl font-bold tracking-tighter text-glow">Finapse</span>
+          <FinapseLogo size={28} />
           <Link
             href="/app/money"
             className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-primary/20"
@@ -33,7 +34,7 @@ export default function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <h1 className="text-6xl md:text-8xl font-extrabold tracking-tighter leading-[1.1] bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+          <h1 className="font-heading text-6xl md:text-8xl font-extrabold tracking-tighter leading-[1.1] bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
             Understand where your<br />
             <span className="text-primary">money actually goes.</span>
           </h1>
@@ -61,7 +62,7 @@ export default function LandingPage() {
       {/* Double-counting demo */}
       <section id="how-it-works" className="relative z-10 mx-auto max-w-6xl px-8 pb-32">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">The Intelligence Edge</h2>
+          <h2 className="font-heading text-3xl md:text-4xl font-bold tracking-tight mb-4">The Intelligence Edge</h2>
           <p className="text-muted-foreground">Stop the noise of double-counted transactions.</p>
         </div>
 
@@ -104,9 +105,9 @@ export default function LandingPage() {
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="relative"
             >
-              <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl" />
-              <div className="relative rounded-full bg-primary p-6 shadow-2xl shadow-primary/40">
-                <span className="text-3xl font-black text-primary-foreground">F</span>
+              <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-2xl" />
+              <div className="relative shadow-2xl shadow-primary/40 rounded-2xl">
+                <FinapseLogo size={64} showText={false} />
               </div>
             </motion.div>
             <p className="mt-6 text-sm font-medium text-center text-muted-foreground max-w-[200px] leading-tight">
@@ -154,7 +155,7 @@ export default function LandingPage() {
       <section className="relative z-10 border-t border-white/5 bg-white/[0.02] px-8 py-32">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Architected for Precision</h2>
+            <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-4">Architected for Precision</h2>
             <p className="text-muted-foreground">Professional-grade tools for personal wealth intelligence.</p>
           </div>
 
@@ -186,7 +187,7 @@ export default function LandingPage() {
 
       <footer className="relative z-10 border-t border-white/5 px-8 py-12 text-center text-sm text-muted-foreground">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <p>© 2026 Finapse — Privacy-first personal finance intelligence.</p>
+          <p><span className="font-heading font-semibold">Finapse</span> © 2026 — Privacy-first personal finance intelligence.</p>
           <p className="opacity-50">Your data never leaves your laptop.</p>
         </div>
       </footer>

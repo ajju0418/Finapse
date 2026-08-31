@@ -62,7 +62,7 @@ export default function CardsPage() {
       <div className="p-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Cards</h1>
+            <h1 className="font-heading text-2xl font-bold">Cards</h1>
             <p className="text-sm text-muted-foreground mt-1">Credit card management</p>
           </div>
           <button

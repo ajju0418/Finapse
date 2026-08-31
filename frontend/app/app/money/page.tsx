@@ -46,7 +46,7 @@ export default function MoneyPage() {
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financial Overview</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight">Financial Overview</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {data ? `${data.periodStart} → ${data.periodEnd}` : 'Your money, clearly.'}
           </p>

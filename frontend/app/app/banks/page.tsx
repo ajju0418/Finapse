@@ -63,7 +63,7 @@ export default function BanksPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Banks</h1>
+          <h1 className="font-heading text-2xl font-bold">My Banks</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your linked bank accounts</p>
         </div>
         <button

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { BarChart3, CreditCard, FileText, Building2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { reconciliationApi } from '@/lib/api/reconciliation'
+import { FinapseLogo } from '@/components/branding/FinapseLogo'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -31,8 +32,8 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-border bg-background px-3 py-4">
       <div className="mb-8 px-2">
-        <Link href="/app/money" className="text-xl font-bold tracking-tight text-foreground hover:opacity-80 transition-opacity">
-          Finapse
+        <Link href="/app/money" className="hover:opacity-80 transition-opacity">
+          <FinapseLogo size={24} />
         </Link>
       </div>
 
