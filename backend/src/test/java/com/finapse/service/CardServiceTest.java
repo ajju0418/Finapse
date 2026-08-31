@@ -42,7 +42,7 @@ class CardServiceTest {
 
     @Test
     void create_persistsCardWithCorrectFields() {
-        when(userService.getDefaultUser()).thenReturn(defaultUser);
+        when(userService.getCurrentUser()).thenReturn(defaultUser);
         CardCreateRequest request = new CardCreateRequest(
                 "SBI Cashback", "SBI", "4821",
                 new BigDecimal("100000.00"), 5, 15);
@@ -70,7 +70,7 @@ class CardServiceTest {
 
     @Test
     void getAll_returnsCardsForDefaultUser() {
-        when(userService.getDefaultUser()).thenReturn(defaultUser);
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
         Card c = new Card();
         c.setId(UUID.randomUUID());
         c.setUser(defaultUser);

@@ -10,11 +10,41 @@ USE finapse;
 -- USERS
 -- -------------------------------------------------------------
 CREATE TABLE users (
+    id            CHAR(36)     NOT NULL,
+    name          VARCHAR(100) NOT NULL,
+    -- Stored lower-cased. NULL only for the legacy pre-auth row,
+    -- which the first registration claims.
+    email         VARCHAR(254) NULL,
+    -- BCrypt hash (cost 12). Never leaves the database.
+    password_hash VARCHAR(100) NULL,
+    role          VARCHAR(20)  NOT NULL DEFAULT 'USER',
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    last_login_at DATETIME     NULL,
+    created_at    DATETIME     NOT NULL,
+    updated_at    DATETIME     NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_email (email)
+) ENGINE=InnoDB;
+
+-- -------------------------------------------------------------
+-- REFRESH TOKENS
+-- Opaque, rotated on every use. Only the SHA-256 digest is stored.
+-- -------------------------------------------------------------
+CREATE TABLE refresh_tokens (
     id         CHAR(36)     NOT NULL,
-    name       VARCHAR(100) NOT NULL,
-    created_at DATETIME     NOT NULL,
-    updated_at DATETIME     NOT NULL,
-    PRIMARY KEY (id)
+    user_id    CHAR(36)     NOT NULL,
+    token_hash CHAR(64)     NOT NULL,
+    family_id  CHAR(36)     NOT NULL,
+    expires_at DATETIME(6)  NOT NULL,
+    revoked_at DATETIME(6)  NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at DATETIME(6)  NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_refresh_tokens_hash (token_hash),
+    KEY idx_refresh_tokens_user (user_id),
+    KEY idx_refresh_tokens_family (family_id),
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- -------------------------------------------------------------
@@ -130,11 +160,17 @@ CREATE TABLE transactions (
     description           VARCHAR(500)  NOT NULL,
     amount                DECIMAL(15,2) NOT NULL,
     direction             ENUM('DEBIT','CREDIT') NOT NULL,
-    transaction_type      ENUM('EXPENSE','INCOME','TRANSFER','CREDIT_CARD_PAYMENT','CASHBACK','REFUND','FEE','INTEREST','UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    transaction_type      ENUM('EXPENSE','INCOME','TRANSFER','CREDIT_CARD_PAYMENT','CASHBACK','REFUND','FEE','INTEREST','EMI','SUBSCRIPTION','VERIFICATION_CHARGE','UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
     cashback_amount       DECIMAL(15,2) NULL,
     transaction_hash      CHAR(64)      NULL,
     reconciliation_status ENUM('UNMATCHED','MATCHED','REVIEW_REQUIRED','CONFIRMED_DUPLICATE','CONFIRMED_TRANSFER','CONFIRMED_CARD_PAYMENT') NOT NULL DEFAULT 'UNMATCHED',
     source_row_number     INT           NULL,
+    classification_source ENUM('USER_OVERRIDE','MERCHANT_DATABASE','EXACT_RULE','FUZZY_RULE','HISTORICAL','PATTERN','LLM','UNKNOWN') NULL,
+    classification_confidence DECIMAL(5,4) NULL,
+    -- Human-readable explanation of the classification decision
+    classification_reason VARCHAR(500)  NULL,
+    is_recurring          BOOLEAN       NOT NULL DEFAULT FALSE,
+    recurring_group_id    VARCHAR(64)   NULL,
     created_at            DATETIME      NOT NULL,
     updated_at            DATETIME      NOT NULL,
     PRIMARY KEY (id),
@@ -159,6 +195,7 @@ CREATE INDEX idx_transactions_category_id           ON transactions (category_id
 CREATE INDEX idx_transactions_merchant_id           ON transactions (merchant_id);
 CREATE INDEX idx_transactions_transaction_hash      ON transactions (transaction_hash);
 CREATE INDEX idx_transactions_reconciliation_status ON transactions (reconciliation_status);
+CREATE INDEX idx_transactions_recurring_group_id    ON transactions (recurring_group_id);
 
 -- -------------------------------------------------------------
 -- TRANSACTION LINKS
@@ -203,3 +240,28 @@ CREATE TABLE reconciliation_reviews (
 
 CREATE INDEX idx_reviews_status      ON reconciliation_reviews (status);
 CREATE INDEX idx_reviews_review_type ON reconciliation_reviews (review_type);
+
+-- -------------------------------------------------------------
+-- USER CLASSIFICATION RULES
+-- -------------------------------------------------------------
+CREATE TABLE user_classification_rules (
+    id                    CHAR(36)      NOT NULL,
+    user_id               CHAR(36)      NOT NULL,
+    narration_pattern     VARCHAR(500)  NOT NULL,
+    match_type            ENUM('EXACT','CONTAINS','STARTS_WITH') NOT NULL DEFAULT 'CONTAINS',
+    transaction_type      ENUM('EXPENSE','INCOME','TRANSFER','CREDIT_CARD_PAYMENT','CASHBACK','REFUND','FEE','INTEREST','EMI','SUBSCRIPTION','VERIFICATION_CHARGE','UNKNOWN') NOT NULL,
+    category_id           CHAR(36)      NULL,
+    merchant_id           CHAR(36)      NULL,
+    times_applied         INT           NOT NULL DEFAULT 0,
+    is_active             BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at            DATETIME      NOT NULL,
+    updated_at            DATETIME      NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_ucr_user     FOREIGN KEY (user_id)     REFERENCES users      (id),
+    CONSTRAINT fk_ucr_category FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT fk_ucr_merchant FOREIGN KEY (merchant_id) REFERENCES merchants  (id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_ucr_user_id    ON user_classification_rules (user_id);
+CREATE INDEX idx_ucr_is_active  ON user_classification_rules (is_active);
+CREATE INDEX idx_ucr_pattern    ON user_classification_rules (narration_pattern);

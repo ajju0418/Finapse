@@ -30,7 +30,7 @@ public class CardService {
 
     @Transactional(readOnly = true)
     public List<CardResponse> getAll() {
-        UUID userId = userService.getDefaultUser().getId();
+        UUID userId = userService.getCurrentUserId();
         return cardRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(CardResponse::from)
@@ -45,7 +45,7 @@ public class CardService {
     @Transactional
     public CardResponse create(CardCreateRequest request) {
         Card card = new Card();
-        card.setUser(userService.getDefaultUser());
+        card.setUser(userService.getCurrentUser());
         card.setName(request.name());
         card.setIssuer(request.issuer());
         card.setLastFourDigits(request.lastFourDigits());

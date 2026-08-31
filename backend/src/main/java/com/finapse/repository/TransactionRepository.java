@@ -102,4 +102,61 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("to") LocalDate to,
             @Param("type") TransactionType type,
             @Param("direction") TransactionDirection direction);
+
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.statement.user.id = :userId
+              AND t.description LIKE CONCAT('%', :pattern, '%')
+              AND t.classificationSource IN ('USER_OVERRIDE', 'MERCHANT_DATABASE', 'EXACT_RULE')
+              AND t.classificationConfidence >= 0.80
+            ORDER BY t.transactionDate DESC
+            LIMIT 20
+            """)
+    List<Transaction> findHighConfidenceByUserAndPattern(
+            @Param("userId") UUID userId,
+            @Param("pattern") String pattern);
+
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.statement.user.id = :userId
+              AND t.merchant.id = :merchantId
+              AND t.classificationConfidence >= 0.80
+            ORDER BY t.transactionDate DESC
+            LIMIT 10
+            """)
+    List<Transaction> findByUserAndMerchant(
+            @Param("userId") UUID userId,
+            @Param("merchantId") UUID merchantId);
+
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.statement.user.id = :userId
+              AND t.merchant.id = :merchantId
+              AND t.amount = :amount
+            ORDER BY t.transactionDate DESC
+            """)
+    List<Transaction> findByUserMerchantAndAmount(
+            @Param("userId") UUID userId,
+            @Param("merchantId") UUID merchantId,
+            @Param("amount") BigDecimal amount);
+
+    /** Every transaction the recurring detector has grouped, for the subscriptions view. */
+    @Query("""
+            SELECT t FROM Transaction t
+            LEFT JOIN FETCH t.merchant
+            LEFT JOIN FETCH t.category
+            WHERE t.statement.user.id = :userId
+              AND t.isRecurring = true
+              AND t.recurringGroupId IS NOT NULL
+            ORDER BY t.transactionDate ASC
+            """)
+    List<Transaction> findRecurringByUser(@Param("userId") UUID userId);
+
+    /** Ownership-scoped lookup; prevents reading another user's transaction by id. */
+    @Query("""
+            SELECT t FROM Transaction t
+            WHERE t.id = :id
+              AND t.statement.user.id = :userId
+            """)
+    Optional<Transaction> findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 }

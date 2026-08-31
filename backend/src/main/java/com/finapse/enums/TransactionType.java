@@ -9,5 +9,8 @@ public enum TransactionType {
     REFUND,
     FEE,
     INTEREST,
+    EMI,
+    SUBSCRIPTION,
+    VERIFICATION_CHARGE,
     UNKNOWN
 }

@@ -9,4 +9,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    /**
+     * The legacy single-tenant row created before authentication existed.
+     * Claimed by the first account that registers so pre-existing financial
+     * data stays reachable.
+     */
+    @Query("SELECT u FROM User u WHERE u.email IS NULL OR u.passwordHash IS NULL")
+    Optional<User> findUnclaimedLegacyUser();
 }

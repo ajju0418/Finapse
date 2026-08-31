@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BarChart3, CreditCard, FileText, Building2, Settings } from 'lucide-react'
+import { BarChart3, CreditCard, FileText, Building2, Repeat, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { reconciliationApi } from '@/lib/api/reconciliation'
 import { FinapseLogo } from '@/components/branding/FinapseLogo'
+import { UserMenu } from '@/components/auth/UserMenu'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -22,6 +23,7 @@ export function Sidebar() {
     { href: '/app/money',      label: 'Money',      icon: BarChart3,  badge: pendingCount > 0 ? pendingCount : null },
     { href: '/app/banks',      label: 'Banks',      icon: Building2,   badge: null },
     { href: '/app/cards',      label: 'Cards',      icon: CreditCard, badge: null },
+    { href: '/app/subscriptions', label: 'Subscriptions', icon: Repeat, badge: null },
     { href: '/app/statements', label: 'Statements', icon: FileText,   badge: null },
   ]
 
@@ -76,6 +78,7 @@ export function Sidebar() {
             {label}
           </Link>
         ))}
+        <UserMenu />
       </div>
     </aside>
   )

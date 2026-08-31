@@ -39,7 +39,7 @@ class AccountServiceTest {
 
     @Test
     void create_persistsAccountWithCorrectFields() {
-        when(userService.getDefaultUser()).thenReturn(defaultUser);
+        when(userService.getCurrentUser()).thenReturn(defaultUser);
         AccountCreateRequest request = new AccountCreateRequest(
                 "HDFC Savings", "HDFC Bank", "1234", "INR");
 
@@ -63,7 +63,7 @@ class AccountServiceTest {
 
     @Test
     void getAll_returnsAccountsForDefaultUser() {
-        when(userService.getDefaultUser()).thenReturn(defaultUser);
+        when(userService.getCurrentUserId()).thenReturn(defaultUser.getId());
         Account a = new Account();
         a.setId(UUID.randomUUID());
         a.setUser(defaultUser);

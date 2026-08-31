@@ -30,7 +30,7 @@ public class AccountService {
 
     @Transactional(readOnly = true)
     public List<AccountResponse> getAll() {
-        UUID userId = userService.getDefaultUser().getId();
+        UUID userId = userService.getCurrentUserId();
         return accountRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(AccountResponse::from)
@@ -45,7 +45,7 @@ public class AccountService {
     @Transactional
     public AccountResponse create(AccountCreateRequest request) {
         Account account = new Account();
-        account.setUser(userService.getDefaultUser());
+        account.setUser(userService.getCurrentUser());
         account.setName(request.name());
         account.setInstitutionName(request.institutionName());
         account.setLastFourDigits(request.lastFourDigits());

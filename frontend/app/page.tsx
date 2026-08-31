@@ -18,12 +18,20 @@ export default function LandingPage() {
       <header className="fixed top-4 inset-x-0 z-50 flex justify-center px-4">
         <nav className="flex items-center justify-between w-full max-w-6xl glass-card rounded-full px-6 py-3">
           <FinapseLogo size={28} />
-          <Link
-            href="/app/money"
-            className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-primary/20"
-          >
-            Open App
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-primary/20"
+            >
+              Get Started
+            </Link>
+          </div>
         </nav>
       </header>
 
@@ -44,7 +52,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-12 flex items-center justify-center gap-6">
             <Link
-              href="/app/money"
+              href="/register"
               className="group flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-bold text-primary-foreground hover:scale-105 transition-all shadow-xl shadow-primary/25"
             >
               Get Started <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />

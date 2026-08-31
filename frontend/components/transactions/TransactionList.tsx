@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Repeat } from 'lucide-react'
 import { transactionsApi } from '@/lib/api/transactions'
 import type { Transaction, TransactionType } from '@/types/transaction'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { ClassificationBadge } from './ClassificationBadge'
+import { CorrectionPopover } from './CorrectionPopover'
 
 const TYPE_STYLES: Record<TransactionType, string> = {
   EXPENSE:             'bg-red-100 text-red-700',
@@ -67,6 +70,10 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
     }
   }
 
+  function handleCorrected(updated: Transaction) {
+    setTransactions(prev => prev.map(tx => tx.id === updated.id ? updated : tx))
+  }
+
   if (loading) return <p className="text-sm text-gray-500 py-4">Loading transactions…</p>
   if (error)   return <p className="text-sm text-red-500 py-4">{error}</p>
   if (transactions.length === 0) return <p className="text-sm text-gray-500 py-4">No transactions found.</p>
@@ -90,28 +97,40 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
         </thead>
         <tbody>
           {transactions.map(tx => (
-            <tr key={tx.id} className="border-b last:border-0 hover:bg-gray-50">
+            <tr key={tx.id} className="group/row border-b last:border-0 hover:bg-gray-50">
               <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">
                 {formatDate(tx.transactionDate)}
               </td>
               <td className="py-2 pr-4 max-w-xs truncate" title={tx.description}>
-                {tx.description}
+                <span className="inline-flex items-center gap-1.5">
+                  {tx.isRecurring && (
+                    <Repeat
+                      className="h-3 w-3 shrink-0 text-primary"
+                      aria-label="Recurring charge"
+                    />
+                  )}
+                  <span className="truncate">{tx.description}</span>
+                </span>
               </td>
               <td className="py-2 pr-4 text-gray-600">
                 {tx.merchantName ?? <span className="text-gray-400">—</span>}
               </td>
               <td className="py-2 pr-4">
-                <select
-                  value={tx.transactionType}
-                  onChange={(e) => handleTypeChange(tx.id, e.target.value as TransactionType)}
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border-0 cursor-pointer focus:ring-2 focus:ring-primary outline-none ${TYPE_STYLES[tx.transactionType]}`}
-                >
-                  {availableTypes.map(type => (
-                    <option key={type} value={type} className="bg-background text-foreground">
-                      {type.replace(/_/g, ' ')}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={tx.transactionType}
+                    onChange={(e) => handleTypeChange(tx.id, e.target.value as TransactionType)}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border-0 cursor-pointer focus:ring-2 focus:ring-primary outline-none ${TYPE_STYLES[tx.transactionType]}`}
+                  >
+                    {availableTypes.map(type => (
+                      <option key={type} value={type} className="bg-background text-foreground">
+                        {type.replace(/_/g, ' ')}
+                      </option>
+                    ))}
+                  </select>
+                  <ClassificationBadge transaction={tx} />
+                  <CorrectionPopover transaction={tx} onCorrected={handleCorrected} />
+                </div>
               </td>
               <td className={`py-2 text-right font-medium whitespace-nowrap ${amountColor(tx)}`}>
                 {amountSign(tx)}{formatCurrency(tx.amount)}

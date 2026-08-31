@@ -1,5 +1,10 @@
 import { apiClient } from './client'
-import type { Transaction } from '@/types/transaction'
+import type {
+  Category,
+  LearnedRule,
+  Transaction,
+  TransactionCorrection,
+} from '@/types/transaction'
 
 export const transactionsApi = {
   getByStatement: (statementId: string) =>
@@ -10,8 +15,22 @@ export const transactionsApi = {
     apiClient.get<Transaction[]>(`/transactions/account/${accountId}`),
   getById: (id: string) =>
     apiClient.get<Transaction>(`/transactions/${id}`),
+
+  /** Correct a classification and optionally teach the engine from it. */
+  correct: (id: string, correction: TransactionCorrection) =>
+    apiClient.patch<Transaction>(`/transactions/${id}`, correction),
+
   updateType: (id: string, type: string) =>
     apiClient.patch<Transaction>(`/transactions/${id}/type?type=${type}`),
   updateCategory: (id: string, categoryId: string) =>
     apiClient.patch<Transaction>(`/transactions/${id}/category?categoryId=${categoryId}`),
+}
+
+export const categoriesApi = {
+  getAll: () => apiClient.get<Category[]>('/categories'),
+}
+
+export const rulesApi = {
+  getAll: () => apiClient.get<LearnedRule[]>('/rules'),
+  forget: (ruleId: string) => apiClient.delete(`/rules/${ruleId}`),
 }

@@ -27,7 +27,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard(String period) {
-        UUID userId = userService.getDefaultUser().getId();
+        UUID userId = userService.getCurrentUserId();
         LocalDate[] range = resolvePeriod(period);
         LocalDate from = range[0];
         LocalDate to = range[1];

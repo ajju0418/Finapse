@@ -5,10 +5,11 @@
 USE finapse;
 
 -- -------------------------------------------------------------
--- Default user (single-user MVP)
+-- Users
+-- Accounts are created through POST /api/auth/register, so none are
+-- seeded here. A pre-auth "Local User" row left over from an older
+-- install is claimed by the first registration, keeping its data.
 -- -------------------------------------------------------------
-INSERT IGNORE INTO users (id, name, created_at, updated_at) VALUES
-('00000000-0000-0000-0000-000000000001', 'Local User', NOW(), NOW());
 
 -- -------------------------------------------------------------
 -- Default categories

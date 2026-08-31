@@ -1,8 +1,10 @@
 package com.finapse.controller;
 
+import com.finapse.dto.TransactionCorrectionRequest;
 import com.finapse.dto.TransactionResponse;
 import com.finapse.enums.TransactionType;
 import com.finapse.service.TransactionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,17 @@ public class TransactionController {
     @GetMapping("/{id}")
     public ResponseEntity<TransactionResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(transactionService.getById(id));
+    }
+
+    /**
+     * Correct a transaction's classification and, by default, teach the engine
+     * so future imports of the same narration are classified this way.
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<TransactionResponse> correct(
+            @PathVariable UUID id,
+            @Valid @RequestBody TransactionCorrectionRequest request) {
+        return ResponseEntity.ok(transactionService.applyCorrection(id, request));
     }
 
     @PatchMapping("/{id}/type")

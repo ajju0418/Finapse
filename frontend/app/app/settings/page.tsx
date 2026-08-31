@@ -7,6 +7,7 @@ import { Building2, Plus, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppShell } from '@/components/layout/AppShell'
 import { FinapseLogo } from '@/components/branding/FinapseLogo'
+import { LearnedRules } from '@/components/transactions/LearnedRules'
 
 export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -164,6 +165,9 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+
+        {/* What the classifier has learned */}
+        <LearnedRules />
 
         {/* App info */}
         <section className="mt-10 pt-8 border-t border-border">

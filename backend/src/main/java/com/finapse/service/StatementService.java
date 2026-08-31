@@ -49,7 +49,7 @@ public class StatementService {
 
     @Transactional(readOnly = true)
     public List<StatementResponse> getAll() {
-        UUID userId = userService.getDefaultUser().getId();
+        UUID userId = userService.getCurrentUserId();
         return statementRepository.findByUserIdOrderByUploadedAtDesc(userId)
                 .stream()
                 .map(StatementResponse::from)
@@ -100,7 +100,7 @@ public class StatementService {
             throw new StatementProcessingException("Could not read uploaded file.");
         }
 
-        UUID userId = userService.getDefaultUser().getId();
+        UUID userId = userService.getCurrentUserId();
         statementRepository.findByUserIdAndFileHash(userId, fileHash).ifPresent(existing -> {
             throw new DuplicateStatementException(
                     "This file has already been imported (statement ID: " + existing.getId() + "). " +
@@ -109,7 +109,7 @@ public class StatementService {
 
         // Create statement record
         Statement statement = new Statement();
-        statement.setUser(userService.getDefaultUser());
+        statement.setUser(userService.getCurrentUser());
         statement.setStatementType(statementType);
         statement.setOriginalFileName(file.getOriginalFilename());
         statement.setFileHash(fileHash);
@@ -148,7 +148,7 @@ public class StatementService {
 
         // Duplicate detection + reconciliation (post-persist so IDs exist)
         duplicateDetectionService.detectDuplicates(transactions);
-        reconciliationService.reconcile(transactions, userService.getDefaultUser().getId());
+        reconciliationService.reconcile(transactions, userService.getCurrentUserId());
 
         // Compute period range
         LocalDate periodStart = transactions.stream()

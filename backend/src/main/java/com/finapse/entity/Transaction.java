@@ -1,5 +1,6 @@
 package com.finapse.entity;
 
+import com.finapse.enums.ClassificationSource;
 import com.finapse.enums.ReconciliationStatus;
 import com.finapse.enums.TransactionDirection;
 import com.finapse.enums.TransactionType;
@@ -84,6 +85,26 @@ public class Transaction {
 
     @Column(name = "source_row_number")
     private Integer sourceRowNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "classification_source", length = 30)
+    private ClassificationSource classificationSource;
+
+    @Column(name = "classification_confidence")
+    private Double classificationConfidence;
+
+    /**
+     * Human-readable explanation of why this transaction was classified the way it
+     * was. Surfaced in the UI to satisfy the product's explainability principle.
+     */
+    @Column(name = "classification_reason", length = 500)
+    private String classificationReason;
+
+    @Column(name = "is_recurring")
+    private Boolean isRecurring = false;
+
+    @Column(name = "recurring_group_id", length = 64)
+    private String recurringGroupId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

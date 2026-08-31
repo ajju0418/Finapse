@@ -1,6 +1,7 @@
 -- Seed initial data for Finapse
-INSERT IGNORE INTO users (id, name, created_at, updated_at) VALUES
-('00000000-0000-0000-0000-000000000001', 'Local User', NOW(), NOW());
+-- No user is seeded: accounts are created through /api/auth/register.
+-- A pre-auth "Local User" row from an older install is claimed automatically
+-- by the first account that registers, so existing data stays reachable.
 
 INSERT IGNORE INTO categories (id, name, display_name, created_at, updated_at) VALUES
 ('00000000-0000-0000-0000-000000000011', 'FOOD_DINING',       'Food & Dining',      NOW(), NOW()),

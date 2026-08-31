@@ -2,6 +2,7 @@ package com.finapse.classification.orchestrator;
 
 import com.finapse.classification.detection.MerchantDetectionService;
 import com.finapse.classification.detection.NormalizationService;
+import com.finapse.classification.detection.RecurringTransactionDetector;
 import com.finapse.classification.strategy.ClassificationStrategy;
 import com.finapse.classification.strategy.ExactMerchantClassifier;
 import com.finapse.classification.strategy.RuleBasedClassifier;
@@ -13,6 +14,8 @@ import com.finapse.entity.Statement;
 import com.finapse.entity.Transaction;
 import com.finapse.enums.TransactionDirection;
 import com.finapse.enums.TransactionType;
+import com.finapse.repository.MerchantRepository;
+import com.finapse.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,11 +39,17 @@ class ClassificationOrchestratorTest {
     private ClassificationOrchestrator orchestrator;
 
     @Mock
-    private MerchantDetectionService merchantDetectionService;
+    private MerchantRepository merchantRepository;
+
+    @Mock
+    private TransactionRepository transactionRepository;
 
     @BeforeEach
     void setUp() {
         NormalizationService normalizationService = new NormalizationService();
+        MerchantDetectionService merchantDetectionService = new MerchantDetectionService(merchantRepository);
+        RecurringTransactionDetector recurringDetector = new RecurringTransactionDetector(transactionRepository);
+
         List<ClassificationStrategy> strategies = List.of(
                 new ExactMerchantClassifier(),
                 new RuleBasedClassifier()
@@ -48,13 +58,13 @@ class ClassificationOrchestratorTest {
         orchestrator = new ClassificationOrchestrator(
                 normalizationService,
                 merchantDetectionService,
+                recurringDetector,
                 strategies
         );
     }
 
     @Test
     void testExactMerchantMatch() {
-        // Arrange
         Category foodCategory = new Category();
         foodCategory.setName("FOOD_AND_DINING");
 
@@ -62,7 +72,7 @@ class ClassificationOrchestratorTest {
         zomato.setNormalizedName("ZOMATO");
         zomato.setCategory(foodCategory);
 
-        when(merchantDetectionService.detect("ZOMATO")).thenReturn(Optional.of(zomato));
+        when(merchantRepository.findByNormalizedName("ZOMATO")).thenReturn(Optional.of(zomato));
 
         RawTransactionRecord raw = new RawTransactionRecord(
                 1,
@@ -79,10 +89,8 @@ class ClassificationOrchestratorTest {
         Account acc = new Account();
         acc.setId(UUID.randomUUID());
 
-        // Act
         Transaction tx = orchestrator.orchestrate(raw, stmt, acc, null);
 
-        // Assert
         assertEquals(TransactionType.EXPENSE, tx.getTransactionType());
         assertEquals("FOOD_AND_DINING", tx.getCategory().getName());
         assertEquals("ZOMATO", tx.getMerchant().getNormalizedName());
@@ -90,8 +98,8 @@ class ClassificationOrchestratorTest {
 
     @Test
     void testSalaryIncomeMatch() {
-        // Arrange
-        when(merchantDetectionService.detect(anyString())).thenReturn(Optional.empty());
+        when(merchantRepository.findByNormalizedName(anyString())).thenReturn(Optional.empty());
+        when(merchantRepository.findByNarrationContaining(anyString())).thenReturn(Collections.emptyList());
 
         RawTransactionRecord raw = new RawTransactionRecord(
                 1,
@@ -108,17 +116,15 @@ class ClassificationOrchestratorTest {
         Account acc = new Account();
         acc.setId(UUID.randomUUID());
 
-        // Act
         Transaction tx = orchestrator.orchestrate(raw, stmt, acc, null);
 
-        // Assert
         assertEquals(TransactionType.INCOME, tx.getTransactionType());
     }
 
     @Test
     void testGenericUpiTransfer() {
-        // Arrange
-        when(merchantDetectionService.detect(anyString())).thenReturn(Optional.empty());
+        when(merchantRepository.findByNormalizedName(anyString())).thenReturn(Optional.empty());
+        when(merchantRepository.findByNarrationContaining(anyString())).thenReturn(Collections.emptyList());
 
         RawTransactionRecord raw = new RawTransactionRecord(
                 1,
@@ -135,11 +141,8 @@ class ClassificationOrchestratorTest {
         Account acc = new Account();
         acc.setId(UUID.randomUUID());
 
-        // Act
         Transaction tx = orchestrator.orchestrate(raw, stmt, acc, null);
 
-        // Assert
         assertEquals(TransactionType.EXPENSE, tx.getTransactionType());
-        // Since no exact match, falls back to RuleBased, which says generic debit = EXPENSE
     }
 }
