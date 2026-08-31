@@ -7,6 +7,16 @@
 **Components:** shadcn/ui
 **Backend:** Spring Boot REST API
 
+> ### ⚠️ Design intent, not current structure
+>
+> Useful for UX reasoning. For how the frontend is actually built — file layout,
+> API client rules, auth handling — read
+> **[`frontend/AGENTS.md`](../frontend/AGENTS.md)**.
+>
+> The app is on **Next.js 16 with the App Router**, where `middleware.ts` is
+> replaced by `proxy.ts`. Routes now include `/app/budgets` and
+> `/app/subscriptions`, and all `/app/*` routes sit behind an auth guard.
+
 ---
 
 # 1. Frontend Objective

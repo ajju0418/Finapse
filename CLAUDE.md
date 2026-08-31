@@ -1,43 +1,42 @@
-# Finapse - Project Guide
+# Finapse
 
-Finapse is a privacy-first personal finance intelligence and transaction reconciliation platform.
+@AGENTS.md
 
-## Build & Run Commands
-### Backend (Spring Boot)
-- Run: `cd backend && mvn spring-boot:run`
-- Test: `cd backend && mvn test`
-- Clean: `cd backend && mvn clean`
+---
 
-### Frontend (Next.js)
-- Install: `cd frontend && npm install`
-- Run: `cd frontend && npm run dev`
-- Build: `cd frontend && npm run build`
-- Lint: `cd frontend && npm run lint`
+The full working guide is in [AGENTS.md](AGENTS.md) and is imported above. It is
+the single source of truth — read it before writing code, and put any new
+project rules there rather than here, so every tool sees them.
 
-## Database Setup
-- Schema: `mysql -u root -p < database/schema.sql`
-- Seed: `mysql -u root -p finapse < database/seed.sql`
+## Quick reference
 
-## Coding Standards
-### General
-- Follow the existing project structure (`backend/`, `frontend/`, `database/`, `doc/`).
-- Use descriptive naming for variables and functions.
+```bash
+cd backend  && mvn spring-boot:run   # API on :8080
+cd backend  && mvn test              # must pass before you finish
+cd frontend && npm run dev           # UI on :3000
+cd frontend && npm run build         # must succeed before you finish
+```
 
-### Backend (Java/Spring Boot)
-- Language: Java 21
-- Framework: Spring Boot 3, Spring Data JPA
-- Patterns: Repository pattern for data access, Service layer for business logic, Controller layer for REST APIs.
-- Naming: PascalCase for classes, camelCase for methods and variables.
-- Error Handling: Use `@ControllerAdvice` for global exception handling.
+## The five rules that matter most
 
-### Frontend (Next.js)
-- Language: TypeScript
-- Framework: Next.js 14 (App Router), Tailwind CSS, shadcn/ui
-- Styling: Use Tailwind utility classes.
-- Component Structure: Modular, reusable components in `components/` directory.
-- State Management: Use React hooks (`useState`, `useContext`) or external libraries if necessary.
+1. **Spending = `EXPENSE` − `REFUND`, floored at zero.** Card payments and
+   transfers are never spending. Never sum raw debits.
+2. **Scope every user-owned lookup by user id.** `findByIdAndUserId(...)`, never
+   `findById(...)`. This repo has had real IDOR bugs.
+3. **Money is `BigDecimal`**, compared with `compareTo`. Never `double`.
+4. **Never mutate or delete an imported transaction** to resolve a duplicate.
+   Create a `TransactionLink` and let the user decide.
+5. **Run the build and tests, read the output, then report.** Never claim a
+   command passed without running it.
 
-## Key Project Areas
-- `backend/src/main/java/com/finapse/service/`: Contains the core "Intelligence" logic (duplicate detection, reconciliation).
-- `frontend/app/`: Next.js App Router pages and layouts.
-- `database/`: SQL scripts for schema and seed data.
+## Docs
+
+| File | Contents |
+|---|---|
+| [AGENTS.md](AGENTS.md) | Working guide, domain rules, patterns, repo traps |
+| [doc/API.md](doc/API.md) | Every REST endpoint |
+| [doc/PRODUCT.md](doc/PRODUCT.md) | Product definition and principles |
+| [doc/Requriement.md](doc/Requriement.md) | Numbered functional requirements |
+| [doc/backend_Architecture.md](doc/backend_Architecture.md) | Backend layering |
+| [doc/database_Schema.md](doc/database_Schema.md) | Data model |
+| [doc/frontend_architecture.md](doc/frontend_architecture.md) | Frontend structure |

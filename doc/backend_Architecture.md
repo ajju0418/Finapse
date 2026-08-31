@@ -8,6 +8,21 @@
 **API:** REST
 **Architecture Style:** Modular Monolith + Layered Architecture
 
+> ### ⚠️ Layering is current; the feature list is not
+>
+> The controller → service → repository layering described here is still exactly
+> how the backend is built. Follow it.
+>
+> Two sections are outdated: this document assumes **single user** and says
+> authentication is out of scope. Both are wrong now — Spring Security with JWT
+> access tokens and rotating refresh tokens is fully implemented, and **every
+> user-owned repository lookup must be scoped by user id**
+> (`findByIdAndUserId`, never `findById`). See [AGENTS.md](../AGENTS.md) §2.
+>
+> Also added since: an async statement-import worker (`@Async`, see
+> `StatementImportProcessor` and `AsyncConfig`), a pluggable parser chain for
+> CSV/Excel/PDF, and budgets.
+
 ---
 
 # 1. Architecture Objective

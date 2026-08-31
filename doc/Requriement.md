@@ -5,6 +5,24 @@
 **Product:** Finapse
 **Platform:** Local Web Application
 
+> ### ⚠️ Historical document — superseded in places
+>
+> This is the **original MVP specification**. It still describes the product's
+> intent accurately, but the implementation has moved past it. Where this
+> document and the code disagree, **the code and [AGENTS.md](../AGENTS.md) win.**
+>
+> Superseded assumptions, and what is true now:
+>
+> | This document says | Reality |
+> |---|---|
+> | FR-001: single user | **Multi-user.** Every user-owned query must be scoped by user id. |
+> | "No authentication required" | **Full auth is implemented** — JWT access tokens plus rotating refresh tokens. Do not remove it. |
+> | CSV import only | CSV, Excel and PDF, with user-remappable columns |
+> | Budgeting out of scope | **Budgets are implemented** — see `/api/budgets` |
+>
+> **Do not "simplify" the code back toward this document.** Removing auth or
+> user scoping would reintroduce a fixed security vulnerability.
+
 ---
 
 # 1. Purpose

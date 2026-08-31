@@ -5,6 +5,25 @@
 **Database:** MySQL 8.0+
 **ORM:** Spring Data JPA / Hibernate
 
+> ### ⚠️ Not the current schema
+>
+> This document explains the **data-model reasoning** and is still worth reading
+> for that. It is **not** an accurate column reference.
+>
+> **The canonical schema is [`database/schema.sql`](../database/schema.sql)**,
+> which must stay in sync with the JPA entities in
+> `backend/src/main/java/com/finapse/entity/`.
+>
+> Added since this document was written:
+> `users` (with real credentials), `refresh_tokens`, `budgets`,
+> `user_classification_rules`, and on `transactions` the
+> `classification_source`, `classification_confidence`, `classification_reason`,
+> `is_recurring` and `recurring_group_id` columns, plus
+> `statements.import_error`.
+>
+> Note where this document says "authentication is not part of MVP" — that is no
+> longer true and must not be acted on.
+
 ---
 
 # 1. Database Philosophy

@@ -4,6 +4,17 @@
 **Status:** MVP Product Definition
 **Project Type:** Personal Finance Intelligence Platform
 
+> ### Still the source of truth for *why*
+>
+> The vision, the core problem, and the five product principles in §5 remain
+> current — read them before designing any feature. The principles
+> (financial accuracy, no destructive reconciliation, explainability, user
+> control, privacy) are encoded as hard rules in [AGENTS.md](../AGENTS.md) §1.
+>
+> Two details have moved on: import is no longer CSV-only (Excel and PDF are
+> supported), and the app is no longer single-user (authentication is fully
+> implemented). Privacy-first still holds — everything runs locally.
+
 ---
 
 # 1. Product Overview
