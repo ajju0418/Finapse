@@ -55,12 +55,14 @@ export default function StatementsPage() {
         </div>
 
         {showWizard && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
-              <StatementUploadWizard
-                onImported={(s) => { handleImported(s); setShowWizard(false) }}
-                onCancel={() => setShowWizard(false)}
-              />
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
+            <div className="flex min-h-full items-start justify-center p-4 sm:items-center">
+              <div className="w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
+                <StatementUploadWizard
+                  onImported={(s) => { handleImported(s); setShowWizard(false) }}
+                  onCancel={() => setShowWizard(false)}
+                />
+              </div>
             </div>
           </div>
         )}

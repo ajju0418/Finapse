@@ -8,8 +8,8 @@ import com.finapse.entity.Transaction;
 import com.finapse.enums.ImportStatus;
 import com.finapse.repository.StatementRepository;
 import com.finapse.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -30,7 +30,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class StatementImportProcessor {
 
     private final StatementRepository statementRepository;
@@ -40,14 +39,39 @@ public class StatementImportProcessor {
     private final DuplicateDetectionService duplicateDetectionService;
     private final ReconciliationService reconciliationService;
 
+    /**
+     * Spring-managed reference to this bean so {@code @Transactional} on {@link #process}
+     * and {@link #markFailed} is honoured. A direct {@code this.process(...)} call from
+     * {@link #processAsync} would bypass the proxy and run without a session, causing
+     * lazy-loaded relations (e.g. Statement.account.user) to fail with LazyInitializationException.
+     */
+    private final StatementImportProcessor self;
+
+    public StatementImportProcessor(
+            StatementRepository statementRepository,
+            TransactionRepository transactionRepository,
+            StatementParserFactory parserFactory,
+            ClassificationOrchestrator classificationOrchestrator,
+            DuplicateDetectionService duplicateDetectionService,
+            ReconciliationService reconciliationService,
+            @Lazy StatementImportProcessor self) {
+        this.statementRepository = statementRepository;
+        this.transactionRepository = transactionRepository;
+        this.parserFactory = parserFactory;
+        this.classificationOrchestrator = classificationOrchestrator;
+        this.duplicateDetectionService = duplicateDetectionService;
+        this.reconciliationService = reconciliationService;
+        this.self = self;
+    }
+
     @Async("statementImportExecutor")
     public void processAsync(UUID statementId, byte[] fileBytes, String fileName,
                              ColumnMappingOverride override, UUID userId) {
         try {
-            process(statementId, fileBytes, fileName, override, userId);
+            self.process(statementId, fileBytes, fileName, override, userId);
         } catch (Exception e) {
             log.error("Import failed for statement {}", statementId, e);
-            markFailed(statementId, e.getMessage());
+            self.markFailed(statementId, e.getMessage());
         }
     }
 
