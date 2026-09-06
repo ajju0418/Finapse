@@ -8,6 +8,7 @@ import com.finapse.entity.TransactionLink;
 import com.finapse.enums.*;
 import com.finapse.exception.ResourceNotFoundException;
 import com.finapse.repository.ReconciliationReviewRepository;
+import com.finapse.repository.StatementRepository;
 import com.finapse.repository.TransactionLinkRepository;
 import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class ReconciliationReviewService {
     private final ReconciliationReviewRepository reviewRepository;
     private final TransactionLinkRepository linkRepository;
     private final TransactionRepository transactionRepository;
+    private final StatementRepository statementRepository;
 
     @Transactional(readOnly = true)
     public List<ReconciliationReviewResponse> getPending() {
@@ -82,8 +84,24 @@ public class ReconciliationReviewService {
         transactionRepository.save(source);
         reviewRepository.save(review);
 
+        checkAndUpdateStatementStatus(source.getStatement());
+        checkAndUpdateStatementStatus(target.getStatement());
+
         log.info("Review {} decided: {}", reviewId, review.getStatus());
         return ReconciliationReviewResponse.from(review);
+    }
+
+    private void checkAndUpdateStatementStatus(com.finapse.entity.Statement statement) {
+        if (statement == null) return;
+        if (statement.getImportStatus() != ImportStatus.REVIEW_REQUIRED) return;
+
+        boolean hasPending = transactionRepository.existsByStatementIdAndReconciliationStatus(
+                statement.getId(), ReconciliationStatus.REVIEW_REQUIRED);
+
+        if (!hasPending) {
+            statement.setImportStatus(ImportStatus.COMPLETED);
+            statementRepository.save(statement);
+        }
     }
 
     private void applyApproval(TransactionLink link, Transaction source, Transaction target) {

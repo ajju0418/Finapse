@@ -67,8 +67,14 @@ public class StatementImportProcessor {
     @Async("statementImportExecutor")
     public void processAsync(UUID statementId, byte[] fileBytes, String fileName,
                              ColumnMappingOverride override, UUID userId) {
+        processAsync(statementId, fileBytes, fileName, override, userId, null);
+    }
+
+    @Async("statementImportExecutor")
+    public void processAsync(UUID statementId, byte[] fileBytes, String fileName,
+                             ColumnMappingOverride override, UUID userId, String password) {
         try {
-            self.process(statementId, fileBytes, fileName, override, userId);
+            self.process(statementId, fileBytes, fileName, override, userId, password);
         } catch (Exception e) {
             log.error("Import failed for statement {}", statementId, e);
             self.markFailed(statementId, e.getMessage());
@@ -84,13 +90,20 @@ public class StatementImportProcessor {
     @Transactional
     public void process(UUID statementId, byte[] fileBytes, String fileName,
                         ColumnMappingOverride override, UUID userId) {
+        process(statementId, fileBytes, fileName, override, userId, null);
+    }
+
+    @Transactional
+    public void process(UUID statementId, byte[] fileBytes, String fileName,
+                        ColumnMappingOverride override, UUID userId, String password) {
         Statement statement = statementRepository.findById(statementId)
                 .orElseThrow(() -> new IllegalStateException("Statement disappeared mid-import: " + statementId));
 
         StatementFileParser parser = parserFactory.getParser(fileName);
         StatementParseResult parseResult = parser.parse(
                 new ByteArrayInputStream(fileBytes), fileName,
-                override != null ? override : ColumnMappingOverride.NONE);
+                override != null ? override : ColumnMappingOverride.NONE,
+                password);
 
         if (parseResult.records().isEmpty()) {
             statement.setImportStatus(ImportStatus.FAILED);
@@ -115,11 +128,14 @@ public class StatementImportProcessor {
         LocalDate periodEnd = transactions.stream()
                 .map(Transaction::getTransactionDate).max(LocalDate::compareTo).orElse(null);
 
+        boolean hasPendingReviews = transactions.stream()
+                .anyMatch(t -> t.getReconciliationStatus() == com.finapse.enums.ReconciliationStatus.REVIEW_REQUIRED);
+
         boolean hasInvalidRows = !parseResult.invalidRows().isEmpty();
         statement.setTransactionCount(transactions.size());
         statement.setPeriodStart(periodStart);
         statement.setPeriodEnd(periodEnd);
-        statement.setImportStatus(hasInvalidRows ? ImportStatus.REVIEW_REQUIRED : ImportStatus.COMPLETED);
+        statement.setImportStatus(hasPendingReviews ? ImportStatus.REVIEW_REQUIRED : ImportStatus.COMPLETED);
         statement.setImportError(hasInvalidRows
                 ? parseResult.invalidRows().size() + " row(s) could not be read and were skipped."
                 : null);

@@ -41,10 +41,23 @@ public class HdfcPdfStatementParser {
     private static final Pattern ROW_END_PATTERN = Pattern.compile("(.*?)(\\d{2}/\\d{2}/\\d{2})\\s+([\\d,]+\\.\\d{2})\\s+([\\d,]+\\.\\d{2})$");
 
     public StatementParseResult parse(InputStream inputStream, String fileName) {
+        return parse(inputStream, fileName, null);
+    }
+
+    public StatementParseResult parse(InputStream inputStream, String fileName, String password) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
-        try (PDDocument document = Loader.loadPDF(inputStream.readAllBytes())) {
+        byte[] bytes;
+        try {
+            bytes = inputStream.readAllBytes();
+        } catch (Exception e) {
+            return new StatementParseResult(List.of(), List.of());
+        }
+
+        try (PDDocument document = (password != null && !password.isBlank())
+                ? Loader.loadPDF(bytes, password)
+                : Loader.loadPDF(bytes)) {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setSortByPosition(true);
             String text = stripper.getText(document);
@@ -74,9 +87,9 @@ public class HdfcPdfStatementParser {
                     currentDateStr = startMatcher.group(1);
                     currentRestOfLine = startMatcher.group(2);
                     currentNarration = new StringBuilder();
-                } else if (currentDateStr != null) {
-                    // It's a continuation of the narration for the current record
-                    if (!currentNarration.isEmpty()) {
+                } else {
+                    // Continuation line for narration
+                    if (currentNarration.length() > 0) {
                         currentNarration.append(" ");
                     }
                     currentNarration.append(line);
@@ -91,6 +104,8 @@ public class HdfcPdfStatementParser {
             // Post-process to determine TransactionDirection using Balance Delta
             determineDirections(records);
 
+        } catch (org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException e) {
+            throw new com.finapse.exception.EncryptedPdfException("This PDF statement is password-protected. Please provide the statement password.");
         } catch (Exception e) {
             log.warn("HDFC layout did not apply to PDF {}: {}", fileName, e.getMessage());
             return new StatementParseResult(List.of(), List.of());

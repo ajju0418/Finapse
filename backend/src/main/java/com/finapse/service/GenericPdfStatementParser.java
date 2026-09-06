@@ -59,14 +59,29 @@ public class GenericPdfStatementParser {
             Pattern.CASE_INSENSITIVE);
 
     public StatementParseResult parse(InputStream inputStream, String fileName) {
+        return parse(inputStream, fileName, null);
+    }
+
+    public StatementParseResult parse(InputStream inputStream, String fileName, String password) {
         List<RawTransactionRecord> records = new ArrayList<>();
         List<InvalidRowReport> invalidRows = new ArrayList<>();
 
+        byte[] bytes;
+        try {
+            bytes = inputStream.readAllBytes();
+        } catch (Exception e) {
+            return new StatementParseResult(List.of(), List.of());
+        }
+
         String text;
-        try (PDDocument document = Loader.loadPDF(inputStream.readAllBytes())) {
+        try (PDDocument document = (password != null && !password.isBlank())
+                ? Loader.loadPDF(bytes, password)
+                : Loader.loadPDF(bytes)) {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setSortByPosition(true);
             text = stripper.getText(document);
+        } catch (org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException e) {
+            throw new com.finapse.exception.EncryptedPdfException("This PDF statement is password-protected. Please provide the statement password.");
         } catch (Exception e) {
             log.warn("Generic PDF reader could not open {}: {}", fileName, e.getMessage());
             return new StatementParseResult(List.of(), List.of());

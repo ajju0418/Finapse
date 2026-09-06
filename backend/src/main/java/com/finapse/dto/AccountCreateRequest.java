@@ -17,5 +17,12 @@ public record AccountCreateRequest(
         String lastFourDigits,
 
         @Size(min = 3, max = 3)
-        String currency
-) {}
+        String currency,
+
+        @Size(max = 255)
+        String statementPassword
+) {
+    public AccountCreateRequest(String name, String institutionName, String lastFourDigits, String currency) {
+        this(name, institutionName, lastFourDigits, currency, null);
+    }
+}

@@ -19,7 +19,8 @@ export function AddAccountForm({ initialData, onCreated, onCancel }: Props) {
     name: initialData?.name || '',
     institutionName: initialData?.institutionName || '',
     lastFourDigits: initialData?.lastFourDigits || '',
-    currency: initialData?.currency || 'INR'
+    currency: initialData?.currency || 'INR',
+    statementPassword: ''
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,6 +74,25 @@ export function AddAccountForm({ initialData, onCreated, onCancel }: Props) {
           value={formData.lastFourDigits}
           onChange={e => setFormData({ ...formData, lastFourDigits: e.target.value })}
         />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="statementPassword">Statement Password (Optional)</Label>
+          {initialData?.hasStatementPassword && (
+            <span className="text-[11px] font-semibold text-emerald-400">Password Saved</span>
+          )}
+        </div>
+        <Input
+          id="statementPassword"
+          type="password"
+          placeholder={initialData?.hasStatementPassword ? '•••••••• (leave blank to keep)' : 'e.g. DOB or PAN for auto-unlocking PDFs'}
+          value={formData.statementPassword}
+          onChange={e => setFormData({ ...formData, statementPassword: e.target.value })}
+        />
+        <p className="text-[11px] text-muted-foreground">
+          Auto-unlocks password-protected PDF statements imported for this bank.
+        </p>
       </div>
 
       <div className="flex gap-3 pt-4">

@@ -30,6 +30,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByReconciliationStatus(ReconciliationStatus status);
 
+    boolean existsByStatementIdAndReconciliationStatus(UUID statementId, ReconciliationStatus status);
+
     List<Transaction> findByCardIdAndTransactionType(UUID cardId, TransactionType type);
 
     @Query("""

@@ -43,6 +43,9 @@ public class Account {
     @Column(nullable = false, length = 3)
     private String currency = "INR";
 
+    @Column(name = "statement_password", length = 255)
+    private String statementPassword;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 

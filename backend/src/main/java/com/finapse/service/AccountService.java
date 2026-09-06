@@ -52,6 +52,9 @@ public class AccountService {
         if (request.currency() != null) {
             account.setCurrency(request.currency().toUpperCase());
         }
+        if (request.statementPassword() != null && !request.statementPassword().isBlank()) {
+            account.setStatementPassword(request.statementPassword());
+        }
         return AccountResponse.from(accountRepository.save(account));
     }
 
@@ -70,6 +73,9 @@ public class AccountService {
         account.setLastFourDigits(request.lastFourDigits());
         if (request.currency() != null) {
             account.setCurrency(request.currency().toUpperCase());
+        }
+        if (request.statementPassword() != null) {
+            account.setStatementPassword(request.statementPassword().isBlank() ? null : request.statementPassword());
         }
         return AccountResponse.from(accountRepository.save(account));
     }

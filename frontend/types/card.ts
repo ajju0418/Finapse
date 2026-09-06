@@ -7,6 +7,8 @@ export interface Card {
   creditLimit: number | null
   billingCycleDay: number | null
   paymentDueDay: number | null
+  hasStatementPassword?: boolean
+  statementPassword?: string
   isActive: boolean
   createdAt?: string
 }

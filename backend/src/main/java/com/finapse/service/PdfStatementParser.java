@@ -21,6 +21,7 @@ import java.io.InputStream;
 public class PdfStatementParser implements StatementFileParser {
 
     private final HdfcPdfStatementParser hdfcParser;
+    private final HdfcCreditCardPdfStatementParser hdfcCreditCardParser;
     private final GenericPdfStatementParser genericParser;
 
     @Override
@@ -30,6 +31,12 @@ public class PdfStatementParser implements StatementFileParser {
 
     @Override
     public StatementParseResult parse(InputStream inputStream, String fileName) {
+        return parse(inputStream, fileName, null, null);
+    }
+
+    @Override
+    public StatementParseResult parse(InputStream inputStream, String fileName,
+                                       com.finapse.dto.ColumnMappingOverride override, String password) {
         byte[] content;
         try {
             content = inputStream.readAllBytes();
@@ -37,13 +44,19 @@ public class PdfStatementParser implements StatementFileParser {
             throw new InvalidStatementFileException("Could not read the uploaded PDF: " + fileName);
         }
 
-        StatementParseResult hdfc = hdfcParser.parse(new ByteArrayInputStream(content), fileName);
+        StatementParseResult hdfc = hdfcParser.parse(new ByteArrayInputStream(content), fileName, password);
         if (!hdfc.records().isEmpty()) {
             log.info("PDF {} parsed with the HDFC layout: {} rows", fileName, hdfc.records().size());
             return hdfc;
         }
 
-        StatementParseResult generic = genericParser.parse(new ByteArrayInputStream(content), fileName);
+        StatementParseResult hdfcCc = hdfcCreditCardParser.parse(new ByteArrayInputStream(content), fileName, password);
+        if (!hdfcCc.records().isEmpty()) {
+            log.info("PDF {} parsed with the HDFC Credit Card layout: {} rows", fileName, hdfcCc.records().size());
+            return hdfcCc;
+        }
+
+        StatementParseResult generic = genericParser.parse(new ByteArrayInputStream(content), fileName, password);
         if (!generic.records().isEmpty()) {
             log.info("PDF {} parsed with the generic layout: {} rows", fileName, generic.records().size());
             return generic;

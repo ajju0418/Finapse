@@ -45,6 +45,9 @@ public class Card {
     @Column(name = "payment_due_day")
     private Integer paymentDueDay;
 
+    @Column(name = "statement_password", length = 255)
+    private String statementPassword;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 

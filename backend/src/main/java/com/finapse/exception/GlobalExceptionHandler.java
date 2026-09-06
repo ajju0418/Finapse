@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(400, "INVALID_CSV", ex.getMessage()));
     }
 
+    @ExceptionHandler(EncryptedPdfException.class)
+    public ResponseEntity<ErrorResponse> handleEncryptedPdf(EncryptedPdfException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(400, "PASSWORD_REQUIRED", ex.getMessage()));
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

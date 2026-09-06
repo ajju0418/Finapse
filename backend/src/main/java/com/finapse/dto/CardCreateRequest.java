@@ -24,5 +24,13 @@ public record CardCreateRequest(
         Integer billingCycleDay,
 
         @Min(1) @Max(31)
-        Integer paymentDueDay
-) {}
+        Integer paymentDueDay,
+
+        @Size(max = 255)
+        String statementPassword
+) {
+    public CardCreateRequest(String name, String issuer, String lastFourDigits, BigDecimal creditLimit,
+                             Integer billingCycleDay, Integer paymentDueDay) {
+        this(name, issuer, lastFourDigits, creditLimit, billingCycleDay, paymentDueDay, null);
+    }
+}

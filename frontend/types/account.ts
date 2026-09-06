@@ -6,6 +6,8 @@ export interface Account {
   accountType: 'BANK'
   lastFourDigits: string | null
   currency: string
+  hasStatementPassword?: boolean
+  statementPassword?: string
   isActive: boolean
   createdAt: string
 }

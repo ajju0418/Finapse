@@ -58,7 +58,30 @@ class AccountServiceTest {
         assertThat(response.name()).isEqualTo("HDFC Savings");
         assertThat(response.institutionName()).isEqualTo("HDFC Bank");
         assertThat(response.lastFourDigits()).isEqualTo("1234");
+        assertThat(response.hasStatementPassword()).isFalse();
         verify(accountRepository).save(any(Account.class));
+    }
+
+    @Test
+    void create_withStatementPassword_setsStatementPasswordAndFlagIsTrue() {
+        when(userService.getCurrentUser()).thenReturn(defaultUser);
+        AccountCreateRequest request = new AccountCreateRequest(
+                "HDFC Savings", "HDFC Bank", "1234", "INR", "hdfc@123");
+
+        Account saved = new Account();
+        saved.setId(UUID.randomUUID());
+        saved.setUser(defaultUser);
+        saved.setName(request.name());
+        saved.setInstitutionName(request.institutionName());
+        saved.setLastFourDigits(request.lastFourDigits());
+        saved.setCurrency("INR");
+        saved.setStatementPassword("hdfc@123");
+
+        when(accountRepository.save(any(Account.class))).thenReturn(saved);
+
+        AccountResponse response = accountService.create(request);
+
+        assertThat(response.hasStatementPassword()).isTrue();
     }
 
     @Test

@@ -9,14 +9,14 @@ import type { Card } from '@/types/card'
 import type { ColumnMapping, Statement, StatementPreview, StatementType } from '@/types/statement'
 import { FileDropzone } from './FileDropzone'
 import { ColumnMappingStep } from './ColumnMappingStep'
-import { X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
+import { X, CheckCircle2, AlertTriangle, Loader2, Lock, Eye, EyeOff } from 'lucide-react'
 
 interface Props {
   onImported: (statement: Statement) => void
   onCancel: () => void
 }
 
-type Step = 'type' | 'source' | 'upload' | 'preview' | 'importing' | 'done'
+type Step = 'type' | 'source' | 'upload' | 'password' | 'preview' | 'importing' | 'done'
 
 /** Imports run in the background; poll until the status settles. */
 const POLL_INTERVAL_MS = 1500
@@ -30,6 +30,10 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
   const [selectedCardId, setSelectedCardId] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
+  const [statementPassword, setStatementPassword] = useState('')
+  const [savePassword, setSavePassword] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
+  const [pendingMapping, setPendingMapping] = useState<ColumnMapping | null>(null)
   const [uploading, setUploading] = useState(false)
   const [loadingSource, setLoadingSource] = useState(true)
   const [sourceError, setSourceError] = useState<string | null>(null)
@@ -77,19 +81,35 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
   }
 
   /** Dry run so the user can confirm columns before anything is written. */
-  async function runPreview(mapping: ColumnMapping | null) {
+  async function runPreview(mapping: ColumnMapping | null, pwdOverride?: string) {
     if (!file) return
     setError(null)
     setUploading(true)
+    const effectivePwd = pwdOverride !== undefined ? pwdOverride : statementPassword
     try {
       const form = new FormData()
       form.append('file', file)
+      if (statementType === 'BANK' && selectedAccountId) form.append('accountId', selectedAccountId)
+      if (statementType === 'CREDIT_CARD' && selectedCardId) form.append('cardId', selectedCardId)
+      if (effectivePwd) form.append('password', effectivePwd)
       appendMapping(form, mapping)
 
       const result = await statementsApi.preview(form)
+
+      if (result.passwordRequired) {
+        setPendingMapping(mapping)
+        setStep('password')
+        return
+      }
+
       setPreview(result)
       setStep('preview')
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message?.includes('PASSWORD_REQUIRED') || err?.message?.toLowerCase().includes('password-protected')) {
+        setPendingMapping(mapping)
+        setStep('password')
+        return
+      }
       setError(err instanceof Error ? err.message : 'Could not read that file. Please try another.')
     } finally {
       setUploading(false)
@@ -133,6 +153,12 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
       form.append('statementType', statementType)
       if (statementType === 'BANK') form.append('accountId', selectedAccountId)
       if (statementType === 'CREDIT_CARD') form.append('cardId', selectedCardId)
+      if (statementPassword) {
+        form.append('password', statementPassword)
+        if (savePassword) {
+          form.append('savePassword', 'true')
+        }
+      }
       appendMapping(form, mapping)
 
       const statement = await statementsApi.upload(form)
@@ -215,7 +241,14 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'}`}
                     >
-                      <p className="text-sm font-medium">{a.name}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{a.name}</p>
+                        {a.hasStatementPassword && (
+                          <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Lock className="h-2.5 w-2.5" /> Password Saved
+                          </span>
+                        )}
+                      </div>
                       {a.institutionName && (
                         <p className="text-xs text-muted-foreground">{a.institutionName}</p>
                       )}
@@ -237,7 +270,14 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'}`}
                     >
-                      <p className="text-sm font-medium">{c.name}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{c.name}</p>
+                        {c.hasStatementPassword && (
+                          <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Lock className="h-2.5 w-2.5" /> Password Saved
+                          </span>
+                        )}
+                      </div>
                       {c.issuer && (
                         <p className="text-xs text-muted-foreground">{c.issuer}{c.lastFourDigits ? ` •••• ${c.lastFourDigits}` : ''}</p>
                       )}
@@ -264,7 +304,7 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
         </div>
       )}
 
-      {/* Step 3 — Upload CSV */}
+      {/* Step 3 — Upload file */}
       {step === 'upload' && (
         <div className="space-y-4">
           <FileDropzone onFileSelected={setFile} disabled={uploading} />
@@ -290,6 +330,82 @@ export function StatementUploadWizard({ onImported, onCancel }: Props) {
               className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {uploading ? 'Reading…' : 'Preview'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3.5 — Password step for encrypted PDF statements */}
+      {step === 'password' && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-amber-200">
+            <Lock className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <p className="font-semibold text-sm text-amber-300">Password-Protected Statement</p>
+              <p className="text-muted-foreground">
+                This PDF requires a password to unlock. Often this is your date of birth, PAN, or account details.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Statement Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={statementPassword}
+                onChange={(e) => setStatementPassword(e.target.value)}
+                placeholder="Enter statement password"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 pr-10 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && statementPassword.trim()) {
+                    e.preventDefault()
+                    runPreview(pendingMapping)
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={savePassword}
+              onChange={(e) => setSavePassword(e.target.checked)}
+              className="rounded border-border"
+            />
+            <span>Remember this password for future statements of this {statementType === 'BANK' ? 'account' : 'card'}</span>
+          </label>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setStep('upload')}
+              disabled={uploading}
+              className="flex-1 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => runPreview(pendingMapping)}
+              disabled={!statementPassword.trim() || uploading}
+              className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {uploading ? 'Unlocking…' : 'Unlock & Preview'}
             </button>
           </div>
         </div>

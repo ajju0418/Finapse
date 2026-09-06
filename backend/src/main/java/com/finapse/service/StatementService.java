@@ -76,6 +76,11 @@ public class StatementService {
      * committing. Nothing is persisted.
      */
     public StatementPreviewResponse preview(MultipartFile file, ColumnMappingOverride override) {
+        return preview(file, override, null, null, null);
+    }
+
+    public StatementPreviewResponse preview(MultipartFile file, ColumnMappingOverride override,
+                                           String password, UUID accountId, UUID cardId) {
         validateFileType(file);
 
         byte[] fileBytes;
@@ -89,22 +94,37 @@ public class StatementService {
         StatementFileParser parser = parserFactory.getParser(fileName);
         ColumnMappingOverride effective = override != null ? override : ColumnMappingOverride.NONE;
 
+        String effectivePassword = password;
+        if ((effectivePassword == null || effectivePassword.isBlank()) && accountId != null) {
+            Account account = accountService.findOrThrow(accountId);
+            effectivePassword = account.getStatementPassword();
+        } else if ((effectivePassword == null || effectivePassword.isBlank()) && cardId != null) {
+            Card card = cardService.findOrThrow(cardId);
+            effectivePassword = card.getStatementPassword();
+        }
+
         List<String> columns;
         ColumnMappingOverride detected;
         try {
-            columns = parser.readColumnNames(new java.io.ByteArrayInputStream(fileBytes), fileName);
-            detected = parser.detectMapping(new java.io.ByteArrayInputStream(fileBytes), fileName);
+            columns = parser.readColumnNames(new java.io.ByteArrayInputStream(fileBytes), fileName, effectivePassword);
+            detected = parser.detectMapping(new java.io.ByteArrayInputStream(fileBytes), fileName, effectivePassword);
+        } catch (com.finapse.exception.EncryptedPdfException e) {
+            return new StatementPreviewResponse(fileName, List.of(), ColumnMappingOverride.NONE,
+                    false, e.getMessage(), 0, 0, List.of(), List.of(), true);
         } catch (InvalidStatementFileException e) {
             return new StatementPreviewResponse(fileName, List.of(), ColumnMappingOverride.NONE,
-                    false, e.getMessage(), 0, 0, List.of(), List.of());
+                    false, e.getMessage(), 0, 0, List.of(), List.of(), false);
         }
 
         StatementParseResult result;
         try {
-            result = parser.parse(new java.io.ByteArrayInputStream(fileBytes), fileName, effective);
+            result = parser.parse(new java.io.ByteArrayInputStream(fileBytes), fileName, effective, effectivePassword);
+        } catch (com.finapse.exception.EncryptedPdfException e) {
+            return new StatementPreviewResponse(fileName, columns, detected,
+                    false, e.getMessage(), 0, 0, List.of(), List.of(), true);
         } catch (InvalidStatementFileException e) {
             return new StatementPreviewResponse(fileName, columns, detected,
-                    false, e.getMessage(), 0, 0, List.of(), List.of());
+                    false, e.getMessage(), 0, 0, List.of(), List.of(), false);
         }
 
         List<StatementPreviewResponse.PreviewRow> sample = result.records().stream()
@@ -125,7 +145,8 @@ public class StatementService {
                 result.records().size(),
                 result.invalidRows().size(),
                 sample,
-                result.invalidRows().stream().limit(5).toList());
+                result.invalidRows().stream().limit(5).toList(),
+                false);
     }
 
     /**
@@ -139,11 +160,37 @@ public class StatementService {
                                     UUID accountId,
                                     UUID cardId,
                                     ColumnMappingOverride override) {
+        return upload(file, statementType, accountId, cardId, override, null, false);
+    }
+
+    @Transactional
+    public StatementResponse upload(MultipartFile file,
+                                    StatementType statementType,
+                                    UUID accountId,
+                                    UUID cardId,
+                                    ColumnMappingOverride override,
+                                    String password,
+                                    Boolean savePassword) {
         validateSource(statementType, accountId, cardId);
         validateFileType(file);
 
         Account account = accountId != null ? accountService.findOrThrow(accountId) : null;
         Card card = cardId != null ? cardService.findOrThrow(cardId) : null;
+
+        String effectivePassword = password;
+        if ((effectivePassword == null || effectivePassword.isBlank()) && account != null) {
+            effectivePassword = account.getStatementPassword();
+        } else if ((effectivePassword == null || effectivePassword.isBlank()) && card != null) {
+            effectivePassword = card.getStatementPassword();
+        }
+
+        if (Boolean.TRUE.equals(savePassword) && password != null && !password.isBlank()) {
+            if (account != null) {
+                account.setStatementPassword(password);
+            } else if (card != null) {
+                card.setStatementPassword(password);
+            }
+        }
 
         // Compute file hash for duplicate detection
         String fileHash;
@@ -178,13 +225,14 @@ public class StatementService {
 
         UUID statementId = statement.getId();
         String fileName = file.getOriginalFilename();
+        String finalPassword = effectivePassword;
 
         // Dispatch only once this transaction has committed, otherwise the worker
         // can start before the statement row is visible to it.
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                importProcessor.processAsync(statementId, fileBytes, fileName, override, userId);
+                importProcessor.processAsync(statementId, fileBytes, fileName, override, userId, finalPassword);
             }
         });
 

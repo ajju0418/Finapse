@@ -15,11 +15,13 @@ import { FinancialSourceCard } from '@/components/financial/FinancialSourceCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils/format'
 import { Plus } from 'lucide-react'
+import { RECONCILIATION_UPDATED_EVENT, type ReconciliationEventDetail } from '@/lib/events/reconciliation'
 
 export default function MoneyPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('THIS_MONTH')
   const [range, setRange]   = useState<DateRange | undefined>(undefined)
   const [data, setData]     = useState<DashboardData | null>(null)
+  const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]   = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -29,14 +31,32 @@ export default function MoneyPage() {
     setLoading(true)
     setError(null)
     dashboardApi.get(period, range)
-      .then(setData)
+      .then((res) => {
+        setData(res)
+        setPendingReviewCount(res.pendingReviewCount)
+      })
       .catch(() => setError('Could not reach backend.'))
       .finally(() => setLoading(false))
   }, [period, range, reloadKey])
 
+  useEffect(() => {
+    const handleReconciliationEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<ReconciliationEventDetail>
+      if (customEvent.detail && typeof customEvent.detail.pendingCount === 'number') {
+        setPendingReviewCount(customEvent.detail.pendingCount)
+      }
+    }
+
+    window.addEventListener(RECONCILIATION_UPDATED_EVENT, handleReconciliationEvent)
+    return () => window.removeEventListener(RECONCILIATION_UPDATED_EVENT, handleReconciliationEvent)
+  }, [])
+
+  const activeReviewCount = pendingReviewCount ?? data?.pendingReviewCount ?? 0
+
   const savingsRate = data && data.income > 0
     ? Math.round(((data.income - data.actualSpending) / data.income) * 100)
     : null
+
 
   return (
     <div className="min-h-screen p-6 md:p-8 space-y-6">
@@ -182,8 +202,8 @@ export default function MoneyPage() {
           </div>
 
           {/* Attention banner */}
-          {data.pendingReviewCount > 0 && (
-            <AttentionBanner count={data.pendingReviewCount} />
+          {activeReviewCount > 0 && (
+            <AttentionBanner count={activeReviewCount} />
           )}
 
           {/* Month-over-month trend */}
@@ -206,12 +226,36 @@ export default function MoneyPage() {
           </div>
 
           {/* Reconciliation */}
-          {data.pendingReviewCount > 0 && (
-            <div id="reviews" className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-5">
-                Needs Your Attention
-              </p>
-              <ReconciliationReviewPanel />
+          {(activeReviewCount > 0 || (pendingReviewCount !== null && pendingReviewCount === 0 && (data.pendingReviewCount ?? 0) > 0)) && (
+            <div id="reviews" className="rounded-2xl border border-border/80 bg-card/70 backdrop-blur-md p-6 shadow-sm transition-all duration-300 scroll-mt-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="font-heading text-lg font-bold tracking-tight">Needs Your Attention</h2>
+                    {activeReviewCount > 0 ? (
+                      <span className="rounded-full bg-primary/15 border border-primary/25 px-2.5 py-0.5 text-xs font-bold font-mono text-primary">
+                        {activeReviewCount} Pending
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                        All Reconciled
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Review matching transactions across statements to ensure money is not counted twice.
+                  </p>
+                </div>
+              </div>
+              <ReconciliationReviewPanel
+                onCountChange={(newCount) => {
+                  setPendingReviewCount(newCount)
+                  if (newCount === 0) {
+                    // Silently refresh dashboard stats to reflect the confirmed reconciliation links
+                    dashboardApi.get(period, range).then(setData).catch(() => {})
+                  }
+                }}
+              />
             </div>
           )}
         </div>

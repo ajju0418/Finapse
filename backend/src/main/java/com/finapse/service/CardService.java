@@ -56,6 +56,9 @@ public class CardService {
         card.setCreditLimit(request.creditLimit());
         card.setBillingCycleDay(request.billingCycleDay());
         card.setPaymentDueDay(request.paymentDueDay());
+        if (request.statementPassword() != null && !request.statementPassword().isBlank()) {
+            card.setStatementPassword(request.statementPassword());
+        }
         return CardResponse.from(cardRepository.save(card));
     }
 
@@ -75,6 +78,9 @@ public class CardService {
         if (request.creditLimit() != null) card.setCreditLimit(request.creditLimit());
         if (request.billingCycleDay() != null) card.setBillingCycleDay(request.billingCycleDay());
         if (request.paymentDueDay() != null) card.setPaymentDueDay(request.paymentDueDay());
+        if (request.statementPassword() != null) {
+            card.setStatementPassword(request.statementPassword().isBlank() ? null : request.statementPassword());
+        }
         return CardResponse.from(cardRepository.save(card));
     }
 

@@ -44,8 +44,11 @@ public class StatementController {
     @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StatementPreviewResponse> preview(
             @RequestParam("file") MultipartFile file,
-            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping) {
-        return ResponseEntity.ok(statementService.preview(file, columnMapping));
+            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping,
+            @RequestParam(value = "password", required = false) String password,
+            @RequestParam(value = "accountId", required = false) UUID accountId,
+            @RequestParam(value = "cardId", required = false) UUID cardId) {
+        return ResponseEntity.ok(statementService.preview(file, columnMapping, password, accountId, cardId));
     }
 
     /**
@@ -58,10 +61,12 @@ public class StatementController {
             @RequestParam("statementType") StatementType statementType,
             @RequestParam(value = "accountId", required = false) UUID accountId,
             @RequestParam(value = "cardId",    required = false) UUID cardId,
-            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping) {
+            @RequestPart(value = "columnMapping", required = false) ColumnMappingOverride columnMapping,
+            @RequestParam(value = "password", required = false) String password,
+            @RequestParam(value = "savePassword", required = false) Boolean savePassword) {
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(statementService.upload(file, statementType, accountId, cardId, columnMapping));
+                .body(statementService.upload(file, statementType, accountId, cardId, columnMapping, password, savePassword));
     }
 
     @DeleteMapping("/{id}")

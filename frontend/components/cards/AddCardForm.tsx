@@ -17,6 +17,7 @@ export function AddCardForm({ initialData, onCreated, onCancel }: Props) {
   const [creditLimit, setCreditLimit] = useState(initialData?.creditLimit ? String(initialData.creditLimit) : '')
   const [billingCycleDay, setBillingCycleDay] = useState(initialData?.billingCycleDay ? String(initialData.billingCycleDay) : '')
   const [paymentDueDay, setPaymentDueDay] = useState(initialData?.paymentDueDay ? String(initialData.paymentDueDay) : '')
+  const [statementPassword, setStatementPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -25,13 +26,14 @@ export function AddCardForm({ initialData, onCreated, onCancel }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const payload = {
+      const payload: Omit<Card, 'id' | 'userId' | 'isActive' | 'createdAt'> = {
         name,
         issuer: issuer || null,
         lastFourDigits: lastFourDigits || null,
         creditLimit: creditLimit ? parseFloat(creditLimit) : null,
         billingCycleDay: billingCycleDay ? parseInt(billingCycleDay) : null,
         paymentDueDay: paymentDueDay ? parseInt(paymentDueDay) : null,
+        ...(statementPassword ? { statementPassword } : {}),
       }
       
       let card;
@@ -122,6 +124,25 @@ export function AddCardForm({ initialData, onCreated, onCancel }: Props) {
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium">Statement Password (Optional)</label>
+          {initialData?.hasStatementPassword && (
+            <span className="text-[11px] font-semibold text-emerald-400">Password Saved</span>
+          )}
+        </div>
+        <input
+          type="password"
+          value={statementPassword}
+          onChange={e => setStatementPassword(e.target.value)}
+          placeholder={initialData?.hasStatementPassword ? '•••••••• (leave blank to keep)' : 'e.g. DOB or PAN for auto-unlocking PDFs'}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Auto-unlocks password-protected credit card statements uploaded for this card.
+        </p>
       </div>
 
       {error && (

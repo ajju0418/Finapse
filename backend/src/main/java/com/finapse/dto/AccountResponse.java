@@ -12,6 +12,7 @@ public record AccountResponse(
         String accountType,
         String lastFourDigits,
         String currency,
+        boolean hasStatementPassword,
         boolean isActive,
         LocalDateTime createdAt
 ) {
@@ -23,6 +24,7 @@ public record AccountResponse(
                 a.getAccountType().name(),
                 a.getLastFourDigits(),
                 a.getCurrency(),
+                a.getStatementPassword() != null && !a.getStatementPassword().isBlank(),
                 a.isActive(),
                 a.getCreatedAt()
         );

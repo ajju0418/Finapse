@@ -14,6 +14,7 @@ public record CardResponse(
         BigDecimal creditLimit,
         Integer billingCycleDay,
         Integer paymentDueDay,
+        boolean hasStatementPassword,
         boolean isActive,
         LocalDateTime createdAt
 ) {
@@ -26,6 +27,7 @@ public record CardResponse(
                 c.getCreditLimit(),
                 c.getBillingCycleDay(),
                 c.getPaymentDueDay(),
+                c.getStatementPassword() != null && !c.getStatementPassword().isBlank(),
                 c.isActive(),
                 c.getCreatedAt()
         );

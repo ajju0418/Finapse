@@ -54,4 +54,5 @@ export interface StatementPreview {
   invalidRowCount: number
   sampleRows: StatementPreviewRow[]
   sampleInvalidRows: { rowNumber: number; reason: string; rawLine: string }[]
+  passwordRequired?: boolean
 }

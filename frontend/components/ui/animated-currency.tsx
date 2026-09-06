@@ -1,6 +1,6 @@
 'use client'
 
-import CountUp from 'react-countup'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface AnimatedCurrencyProps {
@@ -31,6 +31,31 @@ export function AnimatedCurrency({
   locale = 'en-IN',
   showSign = false,
 }: AnimatedCurrencyProps) {
+  const [displayValue, setDisplayValue] = useState(0)
+
+  useEffect(() => {
+    let startTimestamp: number | null = null
+    const startValue = 0
+    const endValue = value
+    const durationMs = duration * 1000
+
+    let animationFrameId: number
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp
+      const progress = Math.min((timestamp - startTimestamp) / durationMs, 1)
+      const current = startValue + (endValue - startValue) * progress
+      setDisplayValue(current)
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step)
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(animationFrameId)
+  }, [value, duration])
+
   const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
@@ -44,14 +69,8 @@ export function AnimatedCurrency({
     <span className={cn('num inline-flex items-baseline', className)}>
       {prefix}
       {sign}
-      <CountUp
-        end={value}
-        duration={duration}
-        decimals={decimals}
-        separator=","
-        preserveValue
-        formattingFn={(n) => formatter.format(n)}
-      />
+      {formatter.format(displayValue)}
     </span>
   )
 }
+

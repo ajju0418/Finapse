@@ -17,8 +17,24 @@ public record StatementPreviewResponse(
         int parsedRowCount,
         int invalidRowCount,
         List<PreviewRow> sampleRows,
-        List<StatementParseResult.InvalidRowReport> sampleInvalidRows
+        List<StatementParseResult.InvalidRowReport> sampleInvalidRows,
+        boolean passwordRequired
 ) {
+    public StatementPreviewResponse(
+            String fileName,
+            List<String> availableColumns,
+            ColumnMappingOverride detectedMapping,
+            boolean mappingComplete,
+            String message,
+            int parsedRowCount,
+            int invalidRowCount,
+            List<PreviewRow> sampleRows,
+            List<StatementParseResult.InvalidRowReport> sampleInvalidRows
+    ) {
+        this(fileName, availableColumns, detectedMapping, mappingComplete, message,
+                parsedRowCount, invalidRowCount, sampleRows, sampleInvalidRows, false);
+    }
+
     public record PreviewRow(
             int sourceRowNumber,
             String date,
