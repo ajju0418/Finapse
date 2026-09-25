@@ -6,14 +6,15 @@ import type {
   Transaction,
   TransactionCorrection,
 } from '@/types/transaction'
+import { toPageQuery, type Page, type PageParams } from '@/types/pagination'
 
 export const transactionsApi = {
-  getByStatement: (statementId: string) =>
-    apiClient.get<Transaction[]>(`/transactions/statement/${statementId}`),
-  getByCard: (cardId: string) =>
-    apiClient.get<Transaction[]>(`/transactions/card/${cardId}`),
-  getByAccount: (accountId: string) =>
-    apiClient.get<Transaction[]>(`/transactions/account/${accountId}`),
+  getByStatement: (statementId: string, params?: PageParams) =>
+    apiClient.get<Page<Transaction>>(`/transactions/statement/${statementId}${toPageQuery(params)}`),
+  getByCard: (cardId: string, params?: PageParams) =>
+    apiClient.get<Page<Transaction>>(`/transactions/card/${cardId}${toPageQuery(params)}`),
+  getByAccount: (accountId: string, params?: PageParams) =>
+    apiClient.get<Page<Transaction>>(`/transactions/account/${accountId}${toPageQuery(params)}`),
   getById: (id: string) =>
     apiClient.get<Transaction>(`/transactions/${id}`),
 

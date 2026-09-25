@@ -1,6 +1,7 @@
 package com.finapse.controller;
 
 import com.finapse.dto.ManualTransactionRequest;
+import com.finapse.dto.PageResponse;
 import com.finapse.dto.TransactionCorrectionRequest;
 import com.finapse.dto.TransactionResponse;
 import com.finapse.enums.TransactionType;
@@ -8,11 +9,13 @@ import com.finapse.service.ManualTransactionService;
 import com.finapse.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,18 +42,27 @@ public class TransactionController {
     }
 
     @GetMapping("/statement/{statementId}")
-    public ResponseEntity<List<TransactionResponse>> getByStatement(@PathVariable UUID statementId) {
-        return ResponseEntity.ok(transactionService.getByStatement(statementId));
+    public ResponseEntity<PageResponse<TransactionResponse>> getByStatement(
+            @PathVariable UUID statementId,
+            @PageableDefault(size = 25, sort = "transactionDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(transactionService.getByStatement(statementId, pageable));
     }
 
     @GetMapping("/card/{cardId}")
-    public ResponseEntity<List<TransactionResponse>> getByCard(@PathVariable UUID cardId) {
-        return ResponseEntity.ok(transactionService.getByCard(cardId));
+    public ResponseEntity<PageResponse<TransactionResponse>> getByCard(
+            @PathVariable UUID cardId,
+            @PageableDefault(size = 25, sort = "transactionDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(transactionService.getByCard(cardId, pageable));
     }
 
     @GetMapping("/account/{accountId}")
-    public ResponseEntity<List<TransactionResponse>> getByAccount(@PathVariable UUID accountId) {
-        return ResponseEntity.ok(transactionService.getByAccount(accountId));
+    public ResponseEntity<PageResponse<TransactionResponse>> getByAccount(
+            @PathVariable UUID accountId,
+            @PageableDefault(size = 25, sort = "transactionDate", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(transactionService.getByAccount(accountId, pageable));
     }
 
     @GetMapping("/{id}")

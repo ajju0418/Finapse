@@ -2,6 +2,7 @@ package com.finapse.service;
 
 import com.finapse.classification.detection.NormalizationService;
 import com.finapse.dto.LearnedRuleResponse;
+import com.finapse.dto.PageResponse;
 import com.finapse.dto.TransactionCorrectionRequest;
 import com.finapse.dto.TransactionResponse;
 import com.finapse.entity.Category;
@@ -13,10 +14,14 @@ import com.finapse.exception.ResourceNotFoundException;
 import com.finapse.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -30,22 +35,49 @@ public class TransactionService {
     private final UserClassificationRuleService ruleService;
     private final NormalizationService normalizationService;
 
+    /**
+     * Columns a client may sort a transaction page by. A client-supplied sort is
+     * validated against this set so an arbitrary property path cannot reach the
+     * database, leak the entity's internals through an error, or produce a 500.
+     */
+    private static final Set<String> SORTABLE_FIELDS = Set.of(
+            "transactionDate", "postedDate", "amount", "description",
+            "transactionType", "createdAt");
+
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "transactionDate");
+
     @Transactional(readOnly = true)
-    public List<TransactionResponse> getByStatement(UUID statementId) {
-        return transactionRepository.findByStatementIdOrderByTransactionDateDesc(statementId)
-                .stream().map(TransactionResponse::from).toList();
+    public PageResponse<TransactionResponse> getByStatement(UUID statementId, Pageable pageable) {
+        return PageResponse.from(
+                transactionRepository.findByStatementId(statementId, sanitize(pageable))
+                        .map(TransactionResponse::from));
     }
 
     @Transactional(readOnly = true)
-    public List<TransactionResponse> getByCard(UUID cardId) {
-        return transactionRepository.findByCardIdOrderByTransactionDateDesc(cardId)
-                .stream().map(TransactionResponse::from).toList();
+    public PageResponse<TransactionResponse> getByCard(UUID cardId, Pageable pageable) {
+        return PageResponse.from(
+                transactionRepository.findByCardId(cardId, sanitize(pageable))
+                        .map(TransactionResponse::from));
     }
 
     @Transactional(readOnly = true)
-    public List<TransactionResponse> getByAccount(UUID accountId) {
-        return transactionRepository.findByAccountIdOrderByTransactionDateDesc(accountId)
-                .stream().map(TransactionResponse::from).toList();
+    public PageResponse<TransactionResponse> getByAccount(UUID accountId, Pageable pageable) {
+        return PageResponse.from(
+                transactionRepository.findByAccountId(accountId, sanitize(pageable))
+                        .map(TransactionResponse::from));
+    }
+
+    /**
+     * Drops any sort clause referencing a column outside {@link #SORTABLE_FIELDS}
+     * and falls back to a deterministic default when nothing valid remains, so
+     * page boundaries stay stable across requests.
+     */
+    private Pageable sanitize(Pageable pageable) {
+        Sort filtered = Sort.by(pageable.getSort().stream()
+                .filter(order -> SORTABLE_FIELDS.contains(order.getProperty()))
+                .toList());
+        Sort effective = filtered.isSorted() ? filtered : DEFAULT_SORT;
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), effective);
     }
 
     @Transactional(readOnly = true)

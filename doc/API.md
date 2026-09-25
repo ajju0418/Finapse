@@ -111,9 +111,9 @@ Uploading a byte-identical file twice returns 409 — the file hash is stored.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/statement/{statementId}` | All rows in a statement |
-| GET | `/card/{cardId}` | |
-| GET | `/account/{accountId}` | |
+| GET | `/statement/{statementId}` | Rows in a statement · **paged** |
+| GET | `/card/{cardId}` | **paged** |
+| GET | `/account/{accountId}` | **paged** |
 | GET | `/{id}` | Single |
 | POST | `/` | Manual cash entry · 201 |
 | PATCH | `/{id}` | Correct classification **and teach the engine** |
@@ -124,8 +124,31 @@ Uploading a byte-identical file twice returns 409 — the file hash is stored.
 `PATCH /{id}` with `applyToSimilar: true` creates a `UserClassificationRule`
 keyed on the *normalized* narration, so future imports classify the same way.
 
-> These list endpoints are unpaginated and unfiltered. See gap #2 in
-> [AGENTS.md](../AGENTS.md).
+### Pagination
+
+The three list endpoints accept `page`, `size`, and `sort` query parameters:
+
+| Param | Default | Notes |
+|---|---|---|
+| `page` | `0` | Zero-indexed page number |
+| `size` | `25` | Rows per page · capped at `100` |
+| `sort` | `transactionDate,desc` | `property,direction`; only `transactionDate`, `postedDate`, `amount`, `description`, `transactionType`, `createdAt` are honoured — any other property is ignored |
+
+They return a `PageResponse` envelope:
+
+```json
+{
+  "content": [ /* TransactionResponse[] */ ],
+  "page": 0,
+  "size": 25,
+  "totalElements": 143,
+  "totalPages": 6,
+  "first": true,
+  "last": false,
+  "hasNext": true,
+  "hasPrevious": false
+}
+```
 
 ---
 

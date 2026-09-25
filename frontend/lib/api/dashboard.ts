@@ -11,7 +11,7 @@ function rangeQuery(range?: DateRange): string {
 }
 
 export const dashboardApi = {
-  get: (period: DashboardPeriod = 'THIS_MONTH', range?: DateRange) =>
+  get: (period: DashboardPeriod = 'LAST_MONTH', range?: DateRange) =>
     apiClient.get<DashboardData>(`/dashboard?period=${period}${rangeQuery(range)}`),
 
   /** Monthly income / spending / net series. A range overrides `months`. */

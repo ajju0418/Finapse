@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Repeat } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
 import { transactionsApi } from '@/lib/api/transactions'
 import type { Transaction, TransactionType } from '@/types/transaction'
+import type { Page, PageParams } from '@/types/pagination'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { Button } from '@/components/ui/button'
 import { ClassificationBadge } from './ClassificationBadge'
 import { CorrectionPopover } from './CorrectionPopover'
+
+const PAGE_SIZE = 25
 
 const TYPE_STYLES: Record<TransactionType, string> = {
   EXPENSE:             'bg-red-100 text-red-700',
@@ -44,44 +48,76 @@ type Props =
   | { accountId: string; statementId?: never; cardId?: never }
 
 export function TransactionList({ statementId, cardId, accountId }: Props) {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [page, setPage] = useState<Page<Transaction> | null>(null)
+  const [pageNumber, setPageNumber] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // A new source is a fresh list — jump back to the first page.
   useEffect(() => {
-    const fetch = statementId
-      ? transactionsApi.getByStatement(statementId)
-      : cardId
-        ? transactionsApi.getByCard(cardId)
-        : transactionsApi.getByAccount(accountId!)
-
-    fetch
-      .then(setTransactions)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+    setPageNumber(0)
   }, [statementId, cardId, accountId])
+
+  const fetchPage = useCallback(
+    (params: PageParams) => {
+      if (statementId) return transactionsApi.getByStatement(statementId, params)
+      if (cardId) return transactionsApi.getByCard(cardId, params)
+      return transactionsApi.getByAccount(accountId!, params)
+    },
+    [statementId, cardId, accountId],
+  )
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    fetchPage({ page: pageNumber, size: PAGE_SIZE })
+      .then((result) => {
+        if (active) {
+          setPage(result)
+          setError(null)
+        }
+      })
+      .catch((e) => active && setError(e.message))
+      .finally(() => active && setLoading(false))
+    // Ignore results from a superseded request (source or page changed).
+    return () => {
+      active = false
+    }
+  }, [fetchPage, pageNumber])
+
+  function patchTransaction(updated: Transaction) {
+    setPage((prev) =>
+      prev
+        ? { ...prev, content: prev.content.map((tx) => (tx.id === updated.id ? updated : tx)) }
+        : prev,
+    )
+  }
 
   async function handleTypeChange(id: string, newType: TransactionType) {
     try {
       const updatedTx = await transactionsApi.updateType(id, newType)
-      setTransactions(prev => prev.map(tx => tx.id === id ? updatedTx : tx))
+      patchTransaction(updatedTx)
     } catch (e) {
       console.error('Failed to update transaction type', e)
     }
   }
 
   function handleCorrected(updated: Transaction) {
-    setTransactions(prev => prev.map(tx => tx.id === updated.id ? updated : tx))
+    patchTransaction(updated)
   }
 
-  if (loading) return <p className="text-sm text-gray-500 py-4">Loading transactions…</p>
+  if (loading && !page) return <p className="text-sm text-gray-500 py-4">Loading transactions…</p>
   if (error)   return <p className="text-sm text-red-500 py-4">{error}</p>
-  if (transactions.length === 0) return <p className="text-sm text-gray-500 py-4">No transactions found.</p>
+  if (!page || page.totalElements === 0) return <p className="text-sm text-gray-500 py-4">No transactions found.</p>
 
+  const transactions = page.content
   const availableTypes: TransactionType[] = [
     'EXPENSE', 'INCOME', 'TRANSFER', 'CREDIT_CARD_PAYMENT',
     'CASHBACK', 'REFUND', 'FEE', 'INTEREST', 'UNKNOWN'
   ]
+
+  const firstRow = page.page * page.size + 1
+  const lastRow = page.page * page.size + transactions.length
 
   return (
     <div className="overflow-x-auto">
@@ -139,6 +175,38 @@ export function TransactionList({ statementId, cardId, accountId }: Props) {
           ))}
         </tbody>
       </table>
+
+      <div className="flex items-center justify-between gap-4 pt-3 text-sm text-gray-500">
+        <span>
+          Showing <span className="font-medium text-gray-700">{firstRow}–{lastRow}</span> of{' '}
+          <span className="font-medium text-gray-700">{page.totalElements}</span>
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline">
+            Page {page.page + 1} of {page.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!page.hasPrevious || loading}
+            onClick={() => setPageNumber((n) => Math.max(0, n - 1))}
+            aria-label="Previous page"
+          >
+            <ChevronLeft />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!page.hasNext || loading}
+            onClick={() => setPageNumber((n) => n + 1)}
+            aria-label="Next page"
+          >
+            Next
+            <ChevronRight />
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

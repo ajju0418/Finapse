@@ -5,14 +5,13 @@ import type { DashboardPeriod, DateRange } from '@/types/dashboard'
 import { CalendarRange } from 'lucide-react'
 
 const PRESETS: { value: DashboardPeriod; label: string }[] = [
-  { value: 'THIS_MONTH', label: 'Month' },
-  { value: 'LAST_MONTH', label: 'Last M' },
-  { value: '7_DAYS', label: '7D' },
-  { value: '30_DAYS', label: '30D' },
-  { value: '3_MONTHS', label: '3M' },
-  { value: '6_MONTHS', label: '6M' },
+  { value: 'LAST_MONTH', label: 'Last Month' },
+  { value: 'THIS_MONTH', label: 'This Month' },
+  { value: '30_DAYS', label: 'Last 30 Days' },
+  { value: '3_MONTHS', label: '3 Months' },
+  { value: '6_MONTHS', label: '6 Months' },
   { value: 'YTD', label: 'YTD' },
-  { value: '1_YEAR', label: '1Y' },
+  { value: '1_YEAR', label: '1 Year' },
 ]
 
 interface Props {

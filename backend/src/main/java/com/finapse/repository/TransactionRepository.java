@@ -4,6 +4,8 @@ import com.finapse.entity.Transaction;
 import com.finapse.enums.ReconciliationStatus;
 import com.finapse.enums.TransactionDirection;
 import com.finapse.enums.TransactionType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,11 +20,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByStatementIdOrderByTransactionDateDesc(UUID statementId);
 
+    Page<Transaction> findByStatementId(UUID statementId, Pageable pageable);
+
     void deleteByStatementId(UUID statementId);
 
     List<Transaction> findByAccountIdOrderByTransactionDateDesc(UUID accountId);
 
+    Page<Transaction> findByAccountId(UUID accountId, Pageable pageable);
+
     List<Transaction> findByCardIdOrderByTransactionDateDesc(UUID cardId);
+
+    Page<Transaction> findByCardId(UUID cardId, Pageable pageable);
 
     Optional<Transaction> findByTransactionHash(String transactionHash);
 

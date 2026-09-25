@@ -3,7 +3,6 @@ import type { Transaction } from './transaction'
 export type DashboardPeriod =
   | 'THIS_MONTH'
   | 'LAST_MONTH'
-  | '7_DAYS'
   | '30_DAYS'
   | '3_MONTHS'
   | '6_MONTHS'

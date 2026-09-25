@@ -18,7 +18,7 @@ import { Plus } from 'lucide-react'
 import { RECONCILIATION_UPDATED_EVENT, type ReconciliationEventDetail } from '@/lib/events/reconciliation'
 
 export default function MoneyPage() {
-  const [period, setPeriod] = useState<DashboardPeriod>('THIS_MONTH')
+  const [period, setPeriod] = useState<DashboardPeriod>('LAST_MONTH')
   const [range, setRange]   = useState<DateRange | undefined>(undefined)
   const [data, setData]     = useState<DashboardData | null>(null)
   const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(null)
